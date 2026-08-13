@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+
+python tools/wiki_sync.py pre-commit

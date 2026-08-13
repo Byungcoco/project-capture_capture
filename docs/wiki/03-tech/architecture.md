@@ -1,0 +1,41 @@
+---
+title: Architecture
+type: technology
+status: verified
+tags: [architecture, determinism, module-boundary]
+updated: 2026-08-13
+summary: 기술 스택, 폴백 가능한 모듈 경계와 결정론 규칙의 원본.
+---
+
+# Architecture
+
+## 기술 스택
+
+Vite + TypeScript(strict) + Three.js(npm). 번들 결과가 정적 웹 빌드로 나와야 한다. 물리는 외부 엔진 없이 자체 구현. 렌더는 3D(직교 카메라), 게임플레이 판정은 2D. 근거는 [[../04-decisions/ADR-0002-web-stack-vite-ts-three|ADR-0002]].
+
+## 모듈 경계 — 폴백 가능한 분리 (절대 규칙)
+
+코어 게임은 "2D 스탬프를 받아 지형으로 배치하는 게임"이다. 직교 캡처는 스탬프를 생성하는 하나의 소스 모듈일 뿐이다. 직교 파트가 완성도에 도달하지 못하면 순수 2D 캡처 게임으로 폴백한다. 근거는 [[../04-decisions/ADR-0004-fallback-core-architecture|ADR-0004]].
+
+- core/    고정 타임스텝 루프, 입력, 플레이어 물리, 2D 충돌, 스테이지 로드, 골 판정
+- stamp/   Stamp 자료구조(2D 폴리곤 조각 + 속성 태그), 스탬프 배치(지오메트리+콜라이더 생성)
+- capture/ 직교 캡처 파이프라인. core는 capture를 몰라도 동작해야 한다
+- render/  Three.js 씬, 직교 카메라, 카메라 회전 연출
+- ui/      캡처 프레임 오버레이, HUD
+
+게임 루프와 시뮬레이션을 렌더·DOM 생명주기에 종속시키지 않는다.
+
+## 결정론 규칙 (리플레이의 전제 — 절대 규칙)
+
+- 고정 타임스텝(60Hz) 시뮬레이션 + 렌더 보간. 가변 dt를 게임 로직에 쓰지 않는다.
+- Math.random() 금지. 난수는 시드 기반 PRNG 모듈만 사용한다.
+- 게임 상태 변화는 (틱 번호, 입력)만의 함수여야 한다.
+- 입력은 틱 단위로 기록 가능한 형태로 수집한다 (리플레이 = 입력 시퀀스 재생).
+
+근거는 [[../04-decisions/ADR-0003-deterministic-fixed-timestep|ADR-0003]].
+
+## 코드 컨벤션
+
+- TypeScript strict. 게임 상수는 constants.ts에 모은다 (PLAY_PLANE, TICK_RATE, FRAME_W/H 등).
+- 주석·커밋은 한글, 식별자는 영어. 매직 넘버 금지.
+- console.log는 디버그 플래그 뒤에 둔다.

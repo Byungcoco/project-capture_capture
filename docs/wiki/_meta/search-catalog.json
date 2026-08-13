@@ -1,0 +1,284 @@
+{
+  "generated": true,
+  "generatedAt": "2026-08-13T19:49:29+09:00",
+  "documentCount": 15,
+  "documents": [
+    {
+      "path": "01-product/concept.md",
+      "title": "Concept and Judging Criteria",
+      "type": "product",
+      "status": "verified",
+      "tags": [
+        "concept",
+        "judging-criteria",
+        "hive"
+      ],
+      "updated": "2026-08-13",
+      "summary": "게임 한 줄 컨셉, 세계관과 심사기준 5개 대응 전략의 원본.",
+      "headings": [
+        "Concept",
+        "한 줄 컨셉",
+        "심사기준 대응"
+      ]
+    },
+    {
+      "path": "02-design/gameplay/game-rules.md",
+      "title": "Game Rules",
+      "type": "design",
+      "status": "verified",
+      "tags": [
+        "rules",
+        "controls",
+        "level-design"
+      ],
+      "updated": "2026-08-13",
+      "summary": "확정된 게임 규칙, 조작 스킴 v1과 레벨 커리큘럼의 원본.",
+      "headings": [
+        "Game Rules",
+        "확정 규칙",
+        "조작 스킴 (v1 — 플레이테스트로 조정 예정)",
+        "레벨 커리큘럼 (기술 도입 → 발전 → 반전 → 결합)"
+      ]
+    },
+    {
+      "path": "02-design/index.md",
+      "title": "Design Index",
+      "type": "design",
+      "status": "verified",
+      "tags": [
+        "design-navigation",
+        "llm-context"
+      ],
+      "updated": "2026-08-13",
+      "summary": "기획 원본 탐색 허브. 상세 규칙은 각 분야 원본에만 둔다.",
+      "headings": [
+        "Design Index"
+      ]
+    },
+    {
+      "path": "03-tech/architecture.md",
+      "title": "Architecture",
+      "type": "technology",
+      "status": "verified",
+      "tags": [
+        "architecture",
+        "determinism",
+        "module-boundary"
+      ],
+      "updated": "2026-08-13",
+      "summary": "기술 스택, 폴백 가능한 모듈 경계와 결정론 규칙의 원본.",
+      "headings": [
+        "Architecture",
+        "기술 스택",
+        "모듈 경계 — 폴백 가능한 분리 (절대 규칙)",
+        "결정론 규칙 (리플레이의 전제 — 절대 규칙)",
+        "코드 컨벤션"
+      ]
+    },
+    {
+      "path": "03-tech/capture-pipeline.md",
+      "title": "Capture Pipeline",
+      "type": "technology",
+      "status": "verified",
+      "tags": [
+        "capture",
+        "geometry",
+        "silhouette"
+      ],
+      "updated": "2026-08-13",
+      "summary": "캡처→스탬프→붙여넣기 알고리즘 스펙의 원본.",
+      "headings": [
+        "Capture Pipeline"
+      ]
+    },
+    {
+      "path": "04-decisions/ADR-0001-orthographic-capture-concept.md",
+      "title": "ADR-0001: 직교 캡처 퍼즐 플랫포머 컨셉 채택",
+      "type": "decision",
+      "status": "accepted",
+      "tags": [
+        "concept",
+        "originality"
+      ],
+      "updated": "2026-08-13",
+      "summary": "원안 2D 캡처를 직교 3D 캡처 + 지형 속성으로 확장 채택한 이유와 대안.",
+      "headings": [
+        "ADR-0001: 직교 캡처 퍼즐 플랫포머 컨셉 채택",
+        "맥락",
+        "결정",
+        "이유",
+        "고려한 대안",
+        "영향"
+      ]
+    },
+    {
+      "path": "04-decisions/ADR-0002-web-stack-vite-ts-three.md",
+      "title": "ADR-0002: Vite + TypeScript + Three.js 스택",
+      "type": "decision",
+      "status": "accepted",
+      "tags": [
+        "stack",
+        "web-build"
+      ],
+      "updated": "2026-08-13",
+      "summary": "웹 빌드 제출 요건과 사람-AI 협업을 전제로 한 스택 선택 이유.",
+      "headings": [
+        "ADR-0002: Vite + TypeScript + Three.js 스택",
+        "맥락",
+        "결정",
+        "이유",
+        "고려한 대안",
+        "영향"
+      ]
+    },
+    {
+      "path": "04-decisions/ADR-0003-deterministic-fixed-timestep.md",
+      "title": "ADR-0003: 결정론 고정 타임스텝 시뮬레이션",
+      "type": "decision",
+      "status": "accepted",
+      "tags": [
+        "determinism",
+        "replay"
+      ],
+      "updated": "2026-08-13",
+      "summary": "리플레이 기반 Hive 확장의 전제인 결정론을 첫 마일스톤부터 강제하는 이유.",
+      "headings": [
+        "ADR-0003: 결정론 고정 타임스텝 시뮬레이션",
+        "맥락",
+        "결정",
+        "이유",
+        "고려한 대안",
+        "영향"
+      ]
+    },
+    {
+      "path": "04-decisions/ADR-0004-fallback-core-architecture.md",
+      "title": "ADR-0004: 폴백 가능한 코어 아키텍처",
+      "type": "decision",
+      "status": "accepted",
+      "tags": [
+        "architecture",
+        "risk"
+      ],
+      "updated": "2026-08-13",
+      "summary": "직교 캡처 리스크에 대비해 코어를 2D 스탬프 게임으로 정의하고 판정일을 두는 결정.",
+      "headings": [
+        "ADR-0004: 폴백 가능한 코어 아키텍처",
+        "맥락",
+        "결정",
+        "이유",
+        "고려한 대안",
+        "영향"
+      ]
+    },
+    {
+      "path": "04-decisions/ADR-0005-puzzle-rules-hybrid-and-snap.md",
+      "title": "ADR-0005: 혼합형 퍼즐 + 붙여넣기 스냅 규칙",
+      "type": "decision",
+      "status": "accepted",
+      "tags": [
+        "game-rules",
+        "level-design"
+      ],
+      "updated": "2026-08-13",
+      "summary": "다해법 허용 + 최소 캡처 기록, 프레임 자유 + 붙여넣기 스냅을 택한 이유.",
+      "headings": [
+        "ADR-0005: 혼합형 퍼즐 + 붙여넣기 스냅 규칙",
+        "맥락",
+        "결정",
+        "이유",
+        "고려한 대안",
+        "영향"
+      ]
+    },
+    {
+      "path": "04-decisions/ADR-0006-adopt-flee-workflow.md",
+      "title": "ADR-0006: project-flee 작업 체계 전면 채택",
+      "type": "decision",
+      "status": "accepted",
+      "tags": [
+        "workflow",
+        "collaboration"
+      ],
+      "updated": "2026-08-13",
+      "summary": "팀원의 검증된 협업 체계(위키·wiki_sync·TDD·Git Flow·dispatch)를 그대로 채택한 결정.",
+      "headings": [
+        "ADR-0006: project-flee 작업 체계 전면 채택",
+        "맥락",
+        "결정",
+        "이유",
+        "고려한 대안",
+        "영향"
+      ]
+    },
+    {
+      "path": "05-progress/current.md",
+      "title": "Current",
+      "type": "progress",
+      "status": "verified",
+      "tags": [
+        "current-scope",
+        "vertical-slice"
+      ],
+      "updated": "2026-08-13",
+      "summary": "지금 참인 상태, 다음 목표와 완료 조건만 유지하는 작업 원본.",
+      "headings": [
+        "Current",
+        "현재 상태",
+        "다음 목표 — 수직 슬라이스 계속",
+        "완료 조건",
+        "이번 범위에서 제외"
+      ]
+    },
+    {
+      "path": "06-code/index.md",
+      "title": "Code Knowledge Index",
+      "type": "implementation",
+      "status": "verified",
+      "tags": [
+        "code-knowledge",
+        "navigation"
+      ],
+      "updated": "2026-08-13",
+      "summary": "구현 지식이 쌓일 자리와 기록 기준을 정의하는 허브.",
+      "headings": [
+        "Code Knowledge Index",
+        "먼저 읽기"
+      ]
+    },
+    {
+      "path": "80-inbox/README.md",
+      "title": "Inbox",
+      "type": "reference",
+      "status": "verified",
+      "tags": [
+        "inbox",
+        "triage"
+      ],
+      "updated": "2026-08-13",
+      "summary": "위치가 불명확하지만 가치 있는 정보를 임시로 두는 곳. 다음 정리 때 원본으로 이동한다.",
+      "headings": [
+        "Inbox"
+      ]
+    },
+    {
+      "path": "index.md",
+      "title": "Capture Capture Project Wiki",
+      "type": "reference",
+      "status": "verified",
+      "tags": [
+        "wiki",
+        "navigation",
+        "llm-context"
+      ],
+      "updated": "2026-08-13",
+      "summary": "사람과 LLM이 프로젝트 원본 지식에 진입하는 최소 탐색 허브.",
+      "headings": [
+        "Capture Capture Project Wiki",
+        "먼저 읽기",
+        "결정 기록",
+        "코드 지식"
+      ]
+    }
+  ]
+}

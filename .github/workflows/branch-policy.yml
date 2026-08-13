@@ -1,0 +1,42 @@
+name: Branch policy
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  git-flow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate Git Flow source and target
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          case "$BASE_REF" in
+            main)
+              [[ "$HEAD_REF" =~ ^(release|hotfix)/[a-zA-Z0-9._-]+$ ]] || {
+                echo "main accepts only release/* or hotfix/* pull requests."
+                exit 1
+              }
+              ;;
+            develop)
+              [[ "$HEAD_REF" =~ ^(feature|release|hotfix)/[a-zA-Z0-9._-]+$ || "$HEAD_REF" == "main" ]] || {
+                echo "develop accepts feature/*, release/*, hotfix/*, or main back-merges."
+                exit 1
+              }
+              ;;
+          esac
+
+  repository-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Validate wiki
+        run: python tools/wiki_sync.py check
