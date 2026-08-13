@@ -1,6 +1,6 @@
 {
   "generated": true,
-  "generatedAt": "2026-08-13T19:49:29+09:00",
+  "generatedAt": "2026-08-13T20:13:13+09:00",
   "documentCount": 15,
   "documents": [
     {
@@ -243,7 +243,8 @@
       "summary": "구현 지식이 쌓일 자리와 기록 기준을 정의하는 허브.",
       "headings": [
         "Code Knowledge Index",
-        "먼저 읽기"
+        "먼저 읽기",
+        "로컬 개발 서버"
       ]
     },
     {

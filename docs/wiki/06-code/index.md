@@ -15,3 +15,7 @@ summary: 구현 지식이 쌓일 자리와 기록 기준을 정의하는 허브.
 
 - [[../05-progress/current|Current]] — 지금 구현할 범위
 - [[../03-tech/architecture|Architecture]] — 목표 구조와 모듈 경계
+
+## 로컬 개발 서버
+
+- Vite 개발 서버는 IPv4 루프백 `127.0.0.1`에 바인딩하며, 브라우저 접속 주소는 `http://127.0.0.1:5173/`이다.
