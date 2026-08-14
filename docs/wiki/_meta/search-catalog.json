@@ -1,7 +1,7 @@
 {
   "generated": true,
-  "generatedAt": "2026-08-14T19:44:14+09:00",
-  "documentCount": 18,
+  "generatedAt": "2026-08-14T20:11:52+09:00",
+  "documentCount": 19,
   "documents": [
     {
       "path": "01-product/concept.md",
@@ -273,9 +273,29 @@
       "headings": [
         "Current",
         "현재 상태",
-        "다음 목표 — 마일스톤 2 조작감 확인",
+        "다음 목표 — 마일스톤 3 플레이테스트",
         "완료 조건",
         "이번 범위에서 제외"
+      ]
+    },
+    {
+      "path": "06-code/capture.md",
+      "title": "Capture and Prototype UI",
+      "type": "implementation",
+      "status": "verified",
+      "tags": [
+        "capture",
+        "stamp",
+        "game-mode",
+        "prototype-ui"
+      ],
+      "updated": "2026-08-14",
+      "summary": "마일스톤 3의 순수 캡처 기하, 카메라 조준, 슬롯과 디버그 UI 구현 계약.",
+      "headings": [
+        "Capture and Prototype UI",
+        "순수 캡처 계약",
+        "런타임 경계",
+        "검증"
       ]
     },
     {

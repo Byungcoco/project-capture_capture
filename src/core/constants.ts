@@ -1,6 +1,7 @@
 export const TICK_RATE = 60
 export const TICK_SECONDS = 1 / TICK_RATE
 export const MAX_STEPS_PER_FRAME = 5
+export const CAMERA_AIM_SPEED_DEGREES = 90
 
 export const PLAYER_HALF_SIZE = { x: 0.4, y: 0.65 } as const
 export const PLAYER_MAX_SPEED = 6

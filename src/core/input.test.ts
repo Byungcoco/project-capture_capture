@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { createTickInput } from './input'
+import { createAimInput, createTickInput } from './input'
 
 describe('createTickInput', () => {
   it('A와 D를 동시에 누르면 수평 입력을 상쇄한다', () => {
@@ -15,5 +15,13 @@ describe('createTickInput', () => {
       moveX: 0,
       jumpPressed: true,
     })
+  })
+})
+
+describe('createAimInput', () => {
+  it('A와 D를 카메라 회전 방향으로 변환한다', () => {
+    expect(createAimInput(new Set(['KeyA']))).toEqual({ rotate: -1 })
+    expect(createAimInput(new Set(['KeyD']))).toEqual({ rotate: 1 })
+    expect(createAimInput(new Set(['KeyA', 'KeyD']))).toEqual({ rotate: 0 })
   })
 })

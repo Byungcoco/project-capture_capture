@@ -1,20 +1,30 @@
 import * as THREE from 'three'
 
+import type { ColumnMajorMatrix4 } from '../capture/types'
+import { CAMERA_AIM_SPEED_DEGREES } from '../core/constants'
 import { PLAYER_HALF_SIZE } from '../core/constants'
-import { STAGE_COLLIDERS } from '../core/stage'
+import { STAGE_BOXES } from '../core/stage'
 import type { Vec2 } from '../core/types'
+import { createCameraOrbit, orbitPosition } from './camera-orbit'
 
 const CAMERA_HEIGHT = 12
 const CAMERA_DEPTH = 16
 const VIEW_HEIGHT = 12
-const TERRAIN_DEPTH = 2
 const PLAYER_DEPTH = 0.8
-const PLAYER_Z = TERRAIN_DEPTH / 2 + PLAYER_DEPTH / 2 + 0.05
+const PLAYER_Z = 1 + PLAYER_DEPTH / 2 + 0.05
+const CAMERA_TARGET = { x: 0, y: -1, z: 0 } as const
+const CAMERA_RADIUS = Math.hypot(10, CAMERA_DEPTH)
+const CAMERA_HEIGHT_OFFSET = CAMERA_HEIGHT - CAMERA_TARGET.y
+const INITIAL_CAMERA_YAW = (Math.atan2(10, CAMERA_DEPTH) * 180) / Math.PI
 const TERRAIN_COLORS = [0x54738f, 0x6389a8, 0x54738f, 0x7398b5, 0x54738f]
 
 export interface GameScene {
   render: (playerPosition: Vec2) => void
   resize: () => void
+  rotateAim: (deltaSeconds: number, direction: -1 | 0 | 1) => void
+  resetAim: () => void
+  getCameraYawDegrees: () => number
+  getViewProjectionElements: () => ColumnMajorMatrix4
 }
 
 export function createGameScene(container: HTMLElement): GameScene {
@@ -23,7 +33,8 @@ export function createGameScene(container: HTMLElement): GameScene {
 
   const camera = new THREE.OrthographicCamera()
   camera.position.set(10, CAMERA_HEIGHT, CAMERA_DEPTH)
-  camera.lookAt(0, -1, 0)
+  camera.lookAt(CAMERA_TARGET.x, CAMERA_TARGET.y, CAMERA_TARGET.z)
+  const cameraOrbit = createCameraOrbit(INITIAL_CAMERA_YAW)
 
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -37,11 +48,11 @@ export function createGameScene(container: HTMLElement): GameScene {
   keyLight.castShadow = true
   scene.add(keyLight)
 
-  STAGE_COLLIDERS.forEach((terrain, index) => {
+  STAGE_BOXES.forEach((terrain, index) => {
     const geometry = new THREE.BoxGeometry(
       terrain.halfSize.x * 2,
       terrain.halfSize.y * 2,
-      TERRAIN_DEPTH,
+      terrain.halfSize.z * 2,
     )
     const material = new THREE.MeshStandardMaterial({
       color: TERRAIN_COLORS[index],
@@ -49,7 +60,7 @@ export function createGameScene(container: HTMLElement): GameScene {
       metalness: 0.05,
     })
     const mesh = new THREE.Mesh(geometry, material)
-    mesh.position.set(terrain.center.x, terrain.center.y, 0)
+    mesh.position.set(terrain.center.x, terrain.center.y, terrain.center.z)
     mesh.castShadow = true
     mesh.receiveShadow = true
     scene.add(mesh)
@@ -85,11 +96,43 @@ export function createGameScene(container: HTMLElement): GameScene {
 
   resize()
 
+  const applyCameraOrbit = (): void => {
+    const position = orbitPosition(
+      cameraOrbit.yawDegrees,
+      CAMERA_RADIUS,
+      CAMERA_HEIGHT_OFFSET,
+      CAMERA_TARGET,
+    )
+    camera.position.set(position.x, position.y, position.z)
+    camera.lookAt(CAMERA_TARGET.x, CAMERA_TARGET.y, CAMERA_TARGET.z)
+    camera.updateMatrixWorld()
+  }
+
   return {
     render: (playerPosition) => {
       playerMesh.position.set(playerPosition.x, playerPosition.y, PLAYER_Z)
       renderer.render(scene, camera)
     },
     resize,
+    rotateAim: (deltaSeconds, direction) => {
+      cameraOrbit.rotate(
+        direction,
+        CAMERA_AIM_SPEED_DEGREES * deltaSeconds,
+      )
+      applyCameraOrbit()
+    },
+    resetAim: () => {
+      cameraOrbit.reset()
+      applyCameraOrbit()
+    },
+    getCameraYawDegrees: () => cameraOrbit.yawDegrees,
+    getViewProjectionElements: () => {
+      camera.updateMatrixWorld()
+      const viewProjection = new THREE.Matrix4().multiplyMatrices(
+        camera.projectionMatrix,
+        camera.matrixWorldInverse,
+      )
+      return [...viewProjection.elements] as ColumnMajorMatrix4
+    },
   }
 }

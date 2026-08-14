@@ -22,6 +22,8 @@ summary: 마일스톤 2의 틱 입력, 관성형 플레이어 물리와 확장 �
 - 점프 속도는 시작 플랫폼보다 2유닛 높은 첫 박스를 달리며 넘을 수 있는 입력 시퀀스로 검증한다.
 - 축별 스윕 AABB가 바닥·양쪽 벽·천장 관통을 막는다.
 - 캡처 다각형 충돌은 마일스톤 4에서 충돌 해결 경계 내부에 추가한다. 플레이어·입력 API에는 다각형 분기를 노출하지 않는다.
+- `transitionGameMode`는 Platform / CaptureAim / Paste와 선택 슬롯만 다루는 순수 FSM이며 Stamp 데이터를 알지 못한다.
+- `stepSession`은 Platform에서만 `stepPlayer`를 호출하고 CaptureAim/Paste에서는 PlayerState를 그대로 보존한다.
 
 ## 검증
 

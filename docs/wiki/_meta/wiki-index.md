@@ -12,8 +12,8 @@ summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 
 > 생성 파일이다. 직접 편집하지 말고 `python tools/wiki_sync.py sync`를 실행한다.
 
-- 생성 시각: 2026-08-14T19:44:14+09:00
-- 원본 문서: 18개
+- 생성 시각: 2026-08-14T20:11:52+09:00
+- 원본 문서: 19개
 
 ## product
 
@@ -58,6 +58,7 @@ summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 
 | 문서 | 상태 | 태그 | 요약 | 갱신 |
 |---|---|---|---|---|
+| [[../06-code/capture|Capture and Prototype UI]] | verified | capture, stamp, game-mode, prototype-ui | 마일스톤 3의 순수 캡처 기하, 카메라 조준, 슬롯과 디버그 UI 구현 계약. | 2026-08-14 |
 | [[../06-code/index|Code Knowledge Index]] | verified | code-knowledge, navigation | 구현 지식이 쌓일 자리와 기록 기준을 정의하는 허브. | 2026-08-14 |
 | [[../06-code/core|Core Simulation]] | verified | player-physics, collision, determinism | 마일스톤 2의 틱 입력, 관성형 플레이어 물리와 확장 가능한 충돌 해결 계약. | 2026-08-14 |
 
