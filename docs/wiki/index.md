@@ -3,7 +3,7 @@ title: Capture Capture Project Wiki
 type: reference
 status: verified
 tags: [wiki, navigation, llm-context]
-updated: 2026-08-13
+updated: 2026-08-14
 summary: 사람과 LLM이 프로젝트 원본 지식에 진입하는 최소 탐색 허브.
 ---
 
@@ -27,6 +27,8 @@ LLM과 사람이 같은 판단 근거를 공유하기 위한 최소 진입점이
 - [[04-decisions/ADR-0004-fallback-core-architecture|ADR-0004]] — 폴백 가능한 코어 아키텍처
 - [[04-decisions/ADR-0005-puzzle-rules-hybrid-and-snap|ADR-0005]] — 혼합형 퍼즐 + 스냅 규칙
 - [[04-decisions/ADR-0006-adopt-flee-workflow|ADR-0006]] — project-flee 작업 체계 전면 채택
+- [[04-decisions/ADR-0007-game-mode-fsm|ADR-0007]] — core 소유 게임 모드 FSM과 캡처 이벤트 기록 경계
+- [[04-decisions/ADR-0008-fixed-normalized-capture-frame|ADR-0008]] — 화면 비율 기반 고정 캡처 프레임
 
 ## 코드 지식
 

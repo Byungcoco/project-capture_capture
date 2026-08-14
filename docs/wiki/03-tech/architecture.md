@@ -38,14 +38,15 @@ Vite + TypeScript(strict) + Three.js(npm). 번들 결과가 정적 웹 빌드로
 | AnimationFSM | render (프레임, 코스메틱) | 클립 선택과 표현의 관성 | core의 PlayerState |
 | 비네트·프레임 UI | render | 연출 상태 | core의 GameMode |
 
-- GameMode FSM은 Platform / CaptureAim / Paste 세 상태를 가진다. 전이는
-  (틱, 입력)만의 함수이며 리플레이에 그대로 기록된다.
+- GameMode FSM은 Platform / CaptureAim / Paste 세 상태를 가진다. 모드 전이와
+  확정된 Capture/Paste 이벤트만 core 입력으로 들어가 리플레이에 기록된다.
 - 입력 매퍼가 원시 입력을 현재 모드에 맞는 의미 명령으로 번역한다.
   stepPlayer는 자기가 어느 모드에 있는지 모른 채, 받은 명령대로만 움직인다.
-- **시간 정지는 틱을 멈추는 게 아니다.** 틱은 계속 돌고, CaptureAim에서는
-  월드 엔티티(플레이어 물리, 움직이는 지형, 위험물)의 갱신만 건너뛴다.
-  카메라 각도와 프레임 위치는 계속 틱 단위로 갱신되고 기록된다 — 그래야
-  리플레이가 조준 과정까지 그대로 재생한다.
+- 고정 틱 루프 호출은 계속되지만 CaptureAim/Paste에서는 월드 엔티티
+  (플레이어 물리, 움직이는 지형, 위험물)의 갱신을 건너뛴다.
+- CaptureAim의 카메라 각도와 프레임 위치는 render/UI가 소유하는 로컬 조준
+  상태이며 틱 입력이나 리플레이에 기록하지 않는다. 좌클릭으로 확정할 때의
+  카메라·프레임 파라미터만 Capture 이벤트로 core에 전달한다.
 - PlayerState는 물리 사실만 가진다: position, velocity, grounded, facing.
   facing은 마지막으로 0이 아니었던 수평 입력의 부호로 갱신한다
   (스프라이트 좌우 반전에 쓰인다, 예정).
@@ -62,6 +63,14 @@ Vite + TypeScript(strict) + Three.js(npm). 번들 결과가 정적 웹 빌드로
 - 입력은 틱 단위로 기록 가능한 형태로 수집한다 (리플레이 = 입력 시퀀스 재생).
 
 근거는 [[../04-decisions/ADR-0003-deterministic-fixed-timestep|ADR-0003]].
+
+## 캡처 프레임 계약
+
+- 수직 슬라이스의 캡처 프레임은 뷰포트 너비의 30%, 높이의 40%인 화면 비율 기반 고정 크기다.
+- 프레임 중심과 경계는 화면 정규화 좌표로 표현한다. 창 크기가 달라도 캡처 범위를 일관되게 유지하고, UI 좌표를 캡처 계산에 그대로 전달하기 위해서다.
+- 플레이어는 인게임에서 프레임 크기를 직접 바꿀 수 없다. 플레이테스트로 기본 비율은 조정할 수 있으며, 캡처별·캡처 가능 횟수별 가변 크기는 향후 게임 규칙 정책으로 확장할 수 있다.
+
+근거는 [[../04-decisions/ADR-0008-fixed-normalized-capture-frame|ADR-0008]].
 
 ## 코드 컨벤션
 

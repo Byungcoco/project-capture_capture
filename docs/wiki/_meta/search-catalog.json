@@ -1,7 +1,7 @@
 {
   "generated": true,
-  "generatedAt": "2026-08-14T19:28:11+09:00",
-  "documentCount": 17,
+  "generatedAt": "2026-08-14T19:44:14+09:00",
+  "documentCount": 18,
   "documents": [
     {
       "path": "01-product/concept.md",
@@ -74,6 +74,7 @@
         "모듈 경계 — 폴백 가능한 분리 (절대 규칙)",
         "게임 모드와 상태 소유",
         "결정론 규칙 (리플레이의 전제 — 절대 규칙)",
+        "캡처 프레임 계약",
         "코드 컨벤션"
       ]
     },
@@ -237,6 +238,28 @@
       ]
     },
     {
+      "path": "04-decisions/ADR-0008-fixed-normalized-capture-frame.md",
+      "title": "ADR-0008: 화면 비율 기반 고정 캡처 프레임",
+      "type": "decision",
+      "status": "accepted",
+      "tags": [
+        "capture",
+        "frame",
+        "normalized-coordinates",
+        "prototype"
+      ],
+      "updated": "2026-08-14",
+      "summary": "프로토타입 캡처 프레임을 뷰포트 너비 30%, 높이 40%로 고정하고 화면 정규화 좌표로 표현하는 결정.",
+      "headings": [
+        "ADR-0008: 화면 비율 기반 고정 캡처 프레임",
+        "맥락",
+        "결정",
+        "이유",
+        "고려한 대안",
+        "영향"
+      ]
+    },
+    {
       "path": "05-progress/current.md",
       "title": "Current",
       "type": "progress",
@@ -316,7 +339,7 @@
         "navigation",
         "llm-context"
       ],
-      "updated": "2026-08-13",
+      "updated": "2026-08-14",
       "summary": "사람과 LLM이 프로젝트 원본 지식에 진입하는 최소 탐색 허브.",
       "headings": [
         "Capture Capture Project Wiki",
