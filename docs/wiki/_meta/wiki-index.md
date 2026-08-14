@@ -12,8 +12,8 @@ summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 
 > 생성 파일이다. 직접 편집하지 말고 `python tools/wiki_sync.py sync`를 실행한다.
 
-- 생성 시각: 2026-08-14T18:40:33+09:00
-- 원본 문서: 16개
+- 생성 시각: 2026-08-14T19:28:11+09:00
+- 원본 문서: 17개
 
 ## product
 
@@ -26,7 +26,7 @@ summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 | 문서 | 상태 | 태그 | 요약 | 갱신 |
 |---|---|---|---|---|
 | [[../02-design/index|Design Index]] | verified | design-navigation, llm-context | 기획 원본 탐색 허브. 상세 규칙은 각 분야 원본에만 둔다. | 2026-08-13 |
-| [[../02-design/gameplay/game-rules|Game Rules]] | verified | rules, controls, level-design | 확정된 게임 규칙, 조작 스킴 v1과 레벨 커리큘럼의 원본. | 2026-08-13 |
+| [[../02-design/gameplay/game-rules|Game Rules]] | verified | rules, controls, level-design | 확정된 게임 규칙, 조작 스킴 v2와 레벨 커리큘럼의 원본. | 2026-08-14 |
 
 ## technology
 
@@ -45,6 +45,7 @@ summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 | [[../04-decisions/ADR-0004-fallback-core-architecture|ADR-0004: 폴백 가능한 코어 아키텍처]] | accepted | architecture, risk | 직교 캡처 리스크에 대비해 코어를 2D 스탬프 게임으로 정의하고 판정일을 두는 결정. | 2026-08-13 |
 | [[../04-decisions/ADR-0005-puzzle-rules-hybrid-and-snap|ADR-0005: 혼합형 퍼즐 + 붙여넣기 스냅 규칙]] | accepted | game-rules, level-design | 다해법 허용 + 최소 캡처 기록, 프레임 자유 + 붙여넣기 스냅을 택한 이유. | 2026-08-13 |
 | [[../04-decisions/ADR-0006-adopt-flee-workflow|ADR-0006: project-flee 작업 체계 전면 채택]] | accepted | workflow, collaboration | 팀원의 검증된 협업 체계(위키·wiki_sync·TDD·Git Flow·dispatch)를 그대로 채택한 결정. | 2026-08-13 |
+| [[../04-decisions/ADR-0007-game-mode-fsm|ADR-0007: 게임 모드 FSM — core가 소유하고 render가 파생한다]] | accepted | game-mode, fsm, input, replay, determinism | 단일 GameMode FSM, 슬롯 기반 캡처, 조준을 리플레이에서 제외하는 이벤트 기록 방식을 정한 결정. | 2026-08-14 |
 
 ## progress
 
