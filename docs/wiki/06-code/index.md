@@ -3,7 +3,7 @@ title: Code Knowledge Index
 type: implementation
 status: verified
 tags: [code-knowledge, navigation]
-updated: 2026-08-13
+updated: 2026-08-14
 summary: 구현 지식이 쌓일 자리와 기록 기준을 정의하는 허브.
 ---
 
@@ -15,6 +15,7 @@ summary: 구현 지식이 쌓일 자리와 기록 기준을 정의하는 허브.
 
 - [[../05-progress/current|Current]] — 지금 구현할 범위
 - [[../03-tech/architecture|Architecture]] — 목표 구조와 모듈 경계
+- [[core|Core Simulation]] — 틱 입력, 플레이어 물리와 충돌 해결 계약
 
 ## 로컬 개발 서버
 

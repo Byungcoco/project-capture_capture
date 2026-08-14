@@ -1,28 +1,19 @@
 import * as THREE from 'three'
 
+import { PLAYER_HALF_SIZE } from '../core/constants'
+import { STAGE_COLLIDERS } from '../core/stage'
+import type { Vec2 } from '../core/types'
+
 const CAMERA_HEIGHT = 12
 const CAMERA_DEPTH = 16
 const VIEW_HEIGHT = 12
 const TERRAIN_DEPTH = 2
-
-interface TerrainBox {
-  x: number
-  y: number
-  width: number
-  height: number
-  color: number
-}
-
-const TERRAIN: readonly TerrainBox[] = [
-  { x: -7, y: -3.5, width: 5, height: 1, color: 0x54738f },
-  { x: -3, y: -2.5, width: 3, height: 3, color: 0x6389a8 },
-  { x: 0.5, y: -3.5, width: 4, height: 1, color: 0x54738f },
-  { x: 4, y: -2.75, width: 2, height: 2.5, color: 0x7398b5 },
-  { x: 7, y: -3.5, width: 4, height: 1, color: 0x54738f },
-]
+const PLAYER_DEPTH = 0.8
+const PLAYER_Z = TERRAIN_DEPTH / 2 + PLAYER_DEPTH / 2 + 0.05
+const TERRAIN_COLORS = [0x54738f, 0x6389a8, 0x54738f, 0x7398b5, 0x54738f]
 
 export interface GameScene {
-  render: () => void
+  render: (playerPosition: Vec2) => void
   resize: () => void
 }
 
@@ -46,23 +37,37 @@ export function createGameScene(container: HTMLElement): GameScene {
   keyLight.castShadow = true
   scene.add(keyLight)
 
-  for (const terrain of TERRAIN) {
+  STAGE_COLLIDERS.forEach((terrain, index) => {
     const geometry = new THREE.BoxGeometry(
-      terrain.width,
-      terrain.height,
+      terrain.halfSize.x * 2,
+      terrain.halfSize.y * 2,
       TERRAIN_DEPTH,
     )
     const material = new THREE.MeshStandardMaterial({
-      color: terrain.color,
+      color: TERRAIN_COLORS[index],
       roughness: 0.75,
       metalness: 0.05,
     })
     const mesh = new THREE.Mesh(geometry, material)
-    mesh.position.set(terrain.x, terrain.y, 0)
+    mesh.position.set(terrain.center.x, terrain.center.y, 0)
     mesh.castShadow = true
     mesh.receiveShadow = true
     scene.add(mesh)
-  }
+  })
+
+  const playerGeometry = new THREE.BoxGeometry(
+    PLAYER_HALF_SIZE.x * 2,
+    PLAYER_HALF_SIZE.y * 2,
+    PLAYER_DEPTH,
+  )
+  const playerMaterial = new THREE.MeshStandardMaterial({
+    color: 0xf6c453,
+    roughness: 0.65,
+    metalness: 0.05,
+  })
+  const playerMesh = new THREE.Mesh(playerGeometry, playerMaterial)
+  playerMesh.castShadow = true
+  scene.add(playerMesh)
 
   const resize = (): void => {
     const width = container.clientWidth
@@ -81,7 +86,10 @@ export function createGameScene(container: HTMLElement): GameScene {
   resize()
 
   return {
-    render: () => renderer.render(scene, camera),
+    render: (playerPosition) => {
+      playerMesh.position.set(playerPosition.x, playerPosition.y, PLAYER_Z)
+      renderer.render(scene, camera)
+    },
     resize,
   }
 }

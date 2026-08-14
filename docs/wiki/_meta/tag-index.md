@@ -3,7 +3,7 @@ title: Tag Index
 type: reference
 status: verified
 tags: [wiki, generated-index, tags]
-updated: 2026-08-13
+updated: 2026-08-14
 generated: true
 summary: 원본 위키를 제한된 태그로 역탐색하는 정적 인덱스.
 ---
@@ -16,11 +16,12 @@ summary: 원본 위키를 제한된 태그로 역탐색하는 정적 인덱스.
 - **capture** — [[../03-tech/capture-pipeline|Capture Pipeline]]
 - **code-knowledge** — [[../06-code/index|Code Knowledge Index]]
 - **collaboration** — [[../04-decisions/ADR-0006-adopt-flee-workflow|ADR-0006: project-flee 작업 체계 전면 채택]]
+- **collision** — [[../06-code/core|Core Simulation]]
 - **concept** — [[../04-decisions/ADR-0001-orthographic-capture-concept|ADR-0001: 직교 캡처 퍼즐 플랫포머 컨셉 채택]], [[../01-product/concept|Concept and Judging Criteria]]
 - **controls** — [[../02-design/gameplay/game-rules|Game Rules]]
 - **current-scope** — [[../05-progress/current|Current]]
 - **design-navigation** — [[../02-design/index|Design Index]]
-- **determinism** — [[../04-decisions/ADR-0003-deterministic-fixed-timestep|ADR-0003: 결정론 고정 타임스텝 시뮬레이션]], [[../03-tech/architecture|Architecture]]
+- **determinism** — [[../04-decisions/ADR-0003-deterministic-fixed-timestep|ADR-0003: 결정론 고정 타임스텝 시뮬레이션]], [[../03-tech/architecture|Architecture]], [[../06-code/core|Core Simulation]]
 - **game-rules** — [[../04-decisions/ADR-0005-puzzle-rules-hybrid-and-snap|ADR-0005: 혼합형 퍼즐 + 붙여넣기 스냅 규칙]]
 - **geometry** — [[../03-tech/capture-pipeline|Capture Pipeline]]
 - **hive** — [[../01-product/concept|Concept and Judging Criteria]]
@@ -31,6 +32,7 @@ summary: 원본 위키를 제한된 태그로 역탐색하는 정적 인덱스.
 - **module-boundary** — [[../03-tech/architecture|Architecture]]
 - **navigation** — [[../index|Capture Capture Project Wiki]], [[../06-code/index|Code Knowledge Index]]
 - **originality** — [[../04-decisions/ADR-0001-orthographic-capture-concept|ADR-0001: 직교 캡처 퍼즐 플랫포머 컨셉 채택]]
+- **player-physics** — [[../06-code/core|Core Simulation]]
 - **replay** — [[../04-decisions/ADR-0003-deterministic-fixed-timestep|ADR-0003: 결정론 고정 타임스텝 시뮬레이션]]
 - **risk** — [[../04-decisions/ADR-0004-fallback-core-architecture|ADR-0004: 폴백 가능한 코어 아키텍처]]
 - **rules** — [[../02-design/gameplay/game-rules|Game Rules]]

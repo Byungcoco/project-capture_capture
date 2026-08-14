@@ -3,7 +3,7 @@ title: Wiki Index
 type: reference
 status: verified
 tags: [wiki, generated-index, llm-context]
-updated: 2026-08-13
+updated: 2026-08-14
 generated: true
 summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 ---
@@ -12,8 +12,8 @@ summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 
 > 생성 파일이다. 직접 편집하지 말고 `python tools/wiki_sync.py sync`를 실행한다.
 
-- 생성 시각: 2026-08-13T20:13:13+09:00
-- 원본 문서: 15개
+- 생성 시각: 2026-08-14T18:17:21+09:00
+- 원본 문서: 16개
 
 ## product
 
@@ -32,7 +32,7 @@ summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 
 | 문서 | 상태 | 태그 | 요약 | 갱신 |
 |---|---|---|---|---|
-| [[../03-tech/architecture|Architecture]] | verified | architecture, determinism, module-boundary | 기술 스택, 폴백 가능한 모듈 경계와 결정론 규칙의 원본. | 2026-08-13 |
+| [[../03-tech/architecture|Architecture]] | verified | architecture, determinism, module-boundary | 기술 스택, 폴백 가능한 모듈 경계와 결정론 규칙의 원본. | 2026-08-14 |
 | [[../03-tech/capture-pipeline|Capture Pipeline]] | verified | capture, geometry, silhouette | 캡처→스탬프→붙여넣기 알고리즘 스펙의 원본. | 2026-08-13 |
 
 ## decision
@@ -50,13 +50,14 @@ summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 
 | 문서 | 상태 | 태그 | 요약 | 갱신 |
 |---|---|---|---|---|
-| [[../05-progress/current|Current]] | verified | current-scope, vertical-slice | 지금 참인 상태, 다음 목표와 완료 조건만 유지하는 작업 원본. | 2026-08-13 |
+| [[../05-progress/current|Current]] | verified | current-scope, vertical-slice | 지금 참인 상태, 다음 목표와 완료 조건만 유지하는 작업 원본. | 2026-08-14 |
 
 ## implementation
 
 | 문서 | 상태 | 태그 | 요약 | 갱신 |
 |---|---|---|---|---|
-| [[../06-code/index|Code Knowledge Index]] | verified | code-knowledge, navigation | 구현 지식이 쌓일 자리와 기록 기준을 정의하는 허브. | 2026-08-13 |
+| [[../06-code/index|Code Knowledge Index]] | verified | code-knowledge, navigation | 구현 지식이 쌓일 자리와 기록 기준을 정의하는 허브. | 2026-08-14 |
+| [[../06-code/core|Core Simulation]] | verified | player-physics, collision, determinism | 마일스톤 2의 틱 입력, 관성형 플레이어 물리와 확장 가능한 충돌 해결 계약. | 2026-08-14 |
 
 ## reference
 

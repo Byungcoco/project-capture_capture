@@ -1,7 +1,7 @@
 {
   "generated": true,
-  "generatedAt": "2026-08-13T20:13:13+09:00",
-  "documentCount": 15,
+  "generatedAt": "2026-08-14T18:17:21+09:00",
+  "documentCount": 16,
   "documents": [
     {
       "path": "01-product/concept.md",
@@ -65,7 +65,7 @@
         "determinism",
         "module-boundary"
       ],
-      "updated": "2026-08-13",
+      "updated": "2026-08-14",
       "summary": "기술 스택, 폴백 가능한 모듈 경계와 결정론 규칙의 원본.",
       "headings": [
         "Architecture",
@@ -220,14 +220,33 @@
         "current-scope",
         "vertical-slice"
       ],
-      "updated": "2026-08-13",
+      "updated": "2026-08-14",
       "summary": "지금 참인 상태, 다음 목표와 완료 조건만 유지하는 작업 원본.",
       "headings": [
         "Current",
         "현재 상태",
-        "다음 목표 — 수직 슬라이스 계속",
+        "다음 목표 — 마일스톤 2 조작감 확인",
         "완료 조건",
         "이번 범위에서 제외"
+      ]
+    },
+    {
+      "path": "06-code/core.md",
+      "title": "Core Simulation",
+      "type": "implementation",
+      "status": "verified",
+      "tags": [
+        "player-physics",
+        "collision",
+        "determinism"
+      ],
+      "updated": "2026-08-14",
+      "summary": "마일스톤 2의 틱 입력, 관성형 플레이어 물리와 확장 가능한 충돌 해결 계약.",
+      "headings": [
+        "Core Simulation",
+        "공개 계약",
+        "현재 튜닝과 확장 경계",
+        "검증"
       ]
     },
     {
@@ -239,7 +258,7 @@
         "code-knowledge",
         "navigation"
       ],
-      "updated": "2026-08-13",
+      "updated": "2026-08-14",
       "summary": "구현 지식이 쌓일 자리와 기록 기준을 정의하는 허브.",
       "headings": [
         "Code Knowledge Index",

@@ -3,7 +3,7 @@ title: Architecture
 type: technology
 status: verified
 tags: [architecture, determinism, module-boundary]
-updated: 2026-08-13
+updated: 2026-08-14
 summary: 기술 스택, 폴백 가능한 모듈 경계와 결정론 규칙의 원본.
 ---
 
@@ -37,5 +37,6 @@ Vite + TypeScript(strict) + Three.js(npm). 번들 결과가 정적 웹 빌드로
 ## 코드 컨벤션
 
 - TypeScript strict. 게임 상수는 constants.ts에 모은다 (PLAY_PLANE, TICK_RATE, FRAME_W/H 등).
+- 좌표·변환은 Three.js 기본인 오른손 좌표계(+X 오른쪽, +Y 위, 기준 정면 뷰에서 +Z 화면 바깥쪽)와 열벡터 `v′ = Mv`를 따르며, 카메라 전방은 세계축이 아니라 카메라 로컬 -Z다. `Matrix4.set(...)` 인수·문서 표기는 행 우선이지만 내부 `elements` 저장과 계산은 열 우선이므로 혼동하지 않는다.
 - 주석·커밋은 한글, 식별자는 영어. 매직 넘버 금지.
 - console.log는 디버그 플래그 뒤에 둔다.
