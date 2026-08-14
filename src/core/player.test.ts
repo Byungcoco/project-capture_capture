@@ -34,6 +34,17 @@ describe('stepPlayer', () => {
     }
 
     expect(state.velocity.x).toBeGreaterThan(1)
+    expect(state.velocity.x).toBeLessThan(3)
+  })
+
+  it('공중에서 입력을 놓으면 수평 속도가 서서히 줄어든다', () => {
+    let state = createState({ velocity: { x: 6, y: 0 } })
+
+    for (let tick = 0; tick < 20; tick += 1) {
+      state = stepPlayer(state, idle, [], 1 / 60)
+    }
+
+    expect(state.velocity.x).toBeCloseTo(10 / 3)
   })
 
   it('접지 중 입력을 놓으면 수평 관성이 점차 줄어든다', () => {
@@ -46,6 +57,17 @@ describe('stepPlayer', () => {
 
     expect(next.velocity.x).toBeGreaterThan(0)
     expect(next.velocity.x).toBeLessThan(6)
+  })
+
+  it('접지 상태에서 입력을 놓으면 한 틱에 속도 0.6을 줄인다', () => {
+    const state = createState({
+      velocity: { x: 6, y: 0 },
+      grounded: true,
+    })
+
+    const next = stepPlayer(state, idle, [], 1 / 60)
+
+    expect(next.velocity.x).toBeCloseTo(5.4)
   })
 
   it('접지 점프 후 공중에서는 다시 점프하지 않는다', () => {

@@ -1,6 +1,7 @@
 import type { Collider, Vec2 } from './types'
 import {
   PLAYER_AIR_ACCELERATION,
+  PLAYER_AIR_DECELERATION,
   PLAYER_GRAVITY,
   PLAYER_GROUND_ACCELERATION,
   PLAYER_GROUND_DECELERATION,
@@ -30,13 +31,16 @@ export function stepPlayer(
 ): PlayerState {
   let velocityX = state.velocity.x
 
-  if (input.moveX === 0 && state.grounded) {
+  if (input.moveX === 0) {
+    const deceleration = state.grounded
+      ? PLAYER_GROUND_DECELERATION
+      : PLAYER_AIR_DECELERATION
     velocityX = approach(
       velocityX,
       0,
-      PLAYER_GROUND_DECELERATION * stepSeconds,
+      deceleration * stepSeconds,
     )
-  } else if (input.moveX !== 0) {
+  } else {
     const acceleration = state.grounded
       ? PLAYER_GROUND_ACCELERATION
       : PLAYER_AIR_ACCELERATION
