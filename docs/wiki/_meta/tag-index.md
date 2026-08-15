@@ -19,6 +19,7 @@ summary: 원본 위키를 제한된 태그로 역탐색하는 정적 인덱스.
 - **code-knowledge** — [[../06-code/index|Code Knowledge Index]]
 - **collaboration** — [[../04-decisions/ADR-0006-adopt-flee-workflow|ADR-0006: project-flee 작업 체계 전면 채택]]
 - **collision** — [[../06-code/core|Core Simulation]]
+- **combat** — [[../06-code/pivot-runtime|Pivot Runtime]]
 - **concept** — [[../04-decisions/ADR-0001-orthographic-capture-concept|ADR-0001: 직교 캡처 퍼즐 플랫포머 컨셉 채택]], [[../01-product/concept|Concept and Judging Criteria]]
 - **controls** — [[../02-design/gameplay/game-rules|Game Rules]]
 - **current-scope** — [[../05-progress/current|Current]]

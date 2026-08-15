@@ -1,6 +1,6 @@
 {
   "generated": true,
-  "generatedAt": "2026-08-15T18:02:34+09:00",
+  "generatedAt": "2026-08-15T18:46:38+09:00",
   "documentCount": 23,
   "documents": [
     {
@@ -517,10 +517,11 @@
         "pivot-runtime",
         "cell-terrain",
         "placement",
-        "wire-action"
+        "wire-action",
+        "combat"
       ],
       "updated": "2026-08-15",
-      "summary": "develop-jaehyeok 피벗 런타임의 결정론 상태, 캡처·배치·와이어 계산 순서와 브라우저 경계.",
+      "summary": "develop-jaehyeok 피벗 런타임의 결정론 상태, 캡처·배치·와이어·전투 계산 순서와 브라우저 경계.",
       "headings": [
         "Pivot Runtime",
         "범위와 격리",
@@ -528,6 +529,7 @@
         "캡처 계약",
         "공중 배치 계약",
         "이동과 와이어",
+        "전투 계약",
         "검증 상태"
       ]
     },

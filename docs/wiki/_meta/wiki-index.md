@@ -12,7 +12,7 @@ summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 
 > 생성 파일이다. 직접 편집하지 말고 `python tools/wiki_sync.py sync`를 실행한다.
 
-- 생성 시각: 2026-08-15T18:02:34+09:00
+- 생성 시각: 2026-08-15T18:46:38+09:00
 - 원본 문서: 23개
 
 ## product
@@ -64,7 +64,7 @@ summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 | [[../06-code/capture|Capture and Prototype UI]] | verified | capture, stamp, game-mode, prototype-ui | 마일스톤 3의 순수 캡처 기하, 카메라 조준, 슬롯과 디버그 UI 구현 계약. | 2026-08-14 |
 | [[../06-code/index|Code Knowledge Index]] | verified | code-knowledge, navigation | 구현 지식이 쌓일 자리와 기록 기준을 정의하는 허브. | 2026-08-15 |
 | [[../06-code/core|Core Simulation]] | verified | player-physics, collision, determinism | 마일스톤 2의 틱 입력, 관성형 플레이어 물리와 확장 가능한 충돌 해결 계약. | 2026-08-14 |
-| [[../06-code/pivot-runtime|Pivot Runtime]] | verified | pivot-runtime, cell-terrain, placement, wire-action | develop-jaehyeok 피벗 런타임의 결정론 상태, 캡처·배치·와이어 계산 순서와 브라우저 경계. | 2026-08-15 |
+| [[../06-code/pivot-runtime|Pivot Runtime]] | verified | pivot-runtime, cell-terrain, placement, wire-action, combat | develop-jaehyeok 피벗 런타임의 결정론 상태, 캡처·배치·와이어·전투 계산 순서와 브라우저 경계. | 2026-08-15 |
 
 ## reference
 

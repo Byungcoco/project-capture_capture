@@ -2,9 +2,9 @@
 title: Pivot Runtime
 type: implementation
 status: verified
-tags: [pivot-runtime, cell-terrain, placement, wire-action]
+tags: [pivot-runtime, cell-terrain, placement, wire-action, combat]
 updated: 2026-08-15
-summary: develop-jaehyeok 피벗 런타임의 결정론 상태, 캡처·배치·와이어 계산 순서와 브라우저 경계.
+summary: develop-jaehyeok 피벗 런타임의 결정론 상태, 캡처·배치·와이어·전투 계산 순서와 브라우저 경계.
 ---
 
 # Pivot Runtime
@@ -52,9 +52,22 @@ summary: develop-jaehyeok 피벗 런타임의 결정론 상태, 캡처·배치·
 - E release는 수평·접선 운동량을 보존하고 수직 속도를 최소 `11m/s`로 올린 뒤 전체 속도를 `30m/s` 안에서 제한한다. 이후 일반 중력의 포물선 운동으로 앵커 지형 상단에 접근한다.
 - 와이어 선은 홀드 snapshot에서만 표시하며 고정 position buffer를 재사용한다. release snapshot부터 즉시 숨긴다.
 
+## 전투 계약
+
+- 틱 순서는 capture/placement transaction → player shot spawn → enemy scheduled spawn → projectile 이동·충돌·피해 → player 이동이다. 같은 틱에 배치된 셀도 그 틱의 탄환을 차폐한다.
+- 좌클릭은 pointer lock에서 boolean edge 하나로 합쳐지고 첫 physics sample에서 소비된다. unlock과 blur는 queue를 비운다.
+- player shot은 cooldown 8틱, 속도 50m/s, 피해 25, TTL 108, 반경 0.12m이고 id는 틱당 하나인 `player-shot-<tick>`이다. camera origin이 player 중심에서 2m를 넘으면 중심 앞 0.6m로 보정한다.
+- enemy는 고정형이고 HP 75, halfSize `{0.55,0.75,0.55}`다. 안정 id 순서와 정적 offset으로 150틱마다 발사 시점 player 중심을 향해 속도 10m/s, 피해 15, TTL 300 탄환을 만든다. HP 0이면 목록에서 제거된다.
+- 충돌은 한 틱 이동 구간 전체의 swept 검사다. target은 확장 AABB, terrain은 BVH 가지치기 뒤 leaf에서 구-박스 face/edge/corner 접촉 시각을 풀어 횡방향 반경과 사선 접촉을 보존한다. 같은 거리면 terrain이 우선한다.
+- 제거 조건은 TTL 0, y < -20, 각 축 절댓값 256m 초과다. 틱 시작 시 이미 위반한 탄환은 충돌·피해 계산 전에 선제 제거한다. player HP는 0 미만으로 내려가지 않는다.
+- 외부 주입 enemy/projectile은 신뢰 경계다. 배열·entry·nested vector shape를 property 접근 전에 좁히고 finite 값, 고유 id, `player-shot-*`/`enemy-shot-*` 예약 namespace, hp/ttl/radius/halfSize·컬렉션 상한을 검사한다. 모든 실패 code는 `INVALID_COMBAT_STATE`다.
+- id 정렬은 host locale이 아니라 UTF-16 code-unit 비교로 고정한다.
+- 렌더는 `kind:owner:id` keyed cache로 생존 entity의 mesh와 GPU 자원을 재사용하고 위치만 갱신한다. 추가·제거된 변경분만 allocate/dispose한다.
+- 데모 코스는 시작 섬 뒤로 10~30m 간격의 wireable 발판 4개를 두고 마지막 중심이 spawn에서 수평 65m 이상, 높이 24.1m다. 각 발판 위에 `enemy-01`~`enemy-04`가 있다.
+
 ## 검증 상태
 
-- 자동 검증: Vitest 전체 27 files, 137 tests 및 프로덕션 build 통과.
-- 브라우저: 초기 3D terrain/player/HUD와 console error 0 확인.
-- 미검증: 인앱 브라우저에서 pointer lock이 활성화되지 않아 실제 캡처, Q 배치, E 조준 보정·머리 위 자동 연결과 진자·릴리스 착지 조작감은 수동 플레이테스트가 필요하다.
+- 자동 검증: Vitest 전체 30 files, 164 tests 및 프로덕션 build 통과.
+- 브라우저: 확장 발판·enemy 4마리 렌더, HUD `HP 100 · ENEMY 4`와 `LMB FIRE`, console error 0 확인.
+- 미검증: 인앱 브라우저에서 pointer lock이 활성화되지 않아 실제 캡처, Q 배치, E 조준 보정·머리 위 자동 연결, 진자·릴리스 착지와 좌클릭 사격·피격 조작감은 수동 플레이테스트가 필요하다.
 - 알려진 비기능 경고: Three.js 프로덕션 chunk가 500kB를 초과한다.
