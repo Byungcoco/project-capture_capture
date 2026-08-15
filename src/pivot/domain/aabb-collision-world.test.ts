@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import { createAabbCollisionWorld } from './aabb-collision-world'
+import { createCellCollisionWorld } from './cell-world'
 import type { CollisionWorld } from './collision-world'
+import { IDLE_PLAYER_COMMAND } from './commands'
 import type { Vec3 } from './math'
+import { createPlayerState, playerWireOrigin, stepPlayer } from './player'
 import type { StaticCollider } from './player'
+import { MOVEMENT_SPAWN, MOVEMENT_TERRAIN } from '../demo/movement-course'
 
 interface CandidateWorld extends CollisionWorld {
   queryWireCandidates?: (
@@ -33,7 +37,108 @@ describe('AABB wire assist query', () => {
     expect(candidates.every(({ point }) => pointOnSurface(point, collider))).toBe(true)
     expect(candidates.every(({ wireable }) => wireable)).toBe(true)
   })
+
+  it('30m sphere와 교차하는 AABB edge의 실제 7.4도 가시 표면을 cone 후보로 선택한다', () => {
+    const player = createPlayerState({
+      position: { x: 0, y: -0.6, z: 0 },
+      grounded: false,
+    })
+    const world = createAabbCollisionWorld([{
+      center: { x: -3.9, y: 0.85, z: -26 },
+      halfSize: { x: 0.1, y: 0.15, z: 4 },
+      wireable: true,
+    }])
+    const next = stepPlayer(
+      player,
+      { ...IDLE_PLAYER_COMMAND, wireAimDirection: { x: 0, y: 0, z: -1 }, wireEdges: ['press'] },
+      world,
+      1 / 60,
+    )
+    const origin = playerWireOrigin(player.position)
+    const anchor = next.wire?.anchor
+
+    expect(anchor).toBeDefined()
+    const offset = anchor === undefined
+      ? { x: 0, y: 0, z: 0 }
+      : { x: anchor.x - origin.x, y: anchor.y - origin.y, z: anchor.z - origin.z }
+    const distance = Math.hypot(offset.x, offset.y, offset.z)
+    const angle = Math.acos(-offset.z / distance) * 180 / Math.PI
+    expect(distance).toBeLessThanOrEqual(30 + 1e-8)
+    expect(angle).toBeCloseTo(7.4, 1)
+  })
+
+  it('동거리 mixed-wireable ray는 collider 순서와 무관하게 non-wireable 차폐를 우선한다', () => {
+    const wireable: StaticCollider = {
+      center: { x: 0, y: 1.5, z: -5 },
+      halfSize: { x: 1, y: 1, z: 1 },
+      wireable: true,
+    }
+    const blocker = { ...wireable, wireable: false }
+    const first = press(createAabbCollisionWorld([wireable, blocker]))
+    const second = press(createAabbCollisionWorld([blocker, wireable]))
+
+    expect(first.wire).toBeNull()
+    expect(second.wire).toBeNull()
+  })
+
+  it('1896셀 direct-miss press는 assist LOS raycast를 현실적 상한 안에서 수행한다', () => {
+    const base = createCellCollisionWorld(MOVEMENT_TERRAIN)
+    let raycastCalls = 0
+    const counted: CollisionWorld = {
+      ...base,
+      raycast(origin, direction, maximumDistance) {
+        raycastCalls += 1
+        return base.raycast(origin, direction, maximumDistance)
+      },
+    }
+
+    stepPlayer(
+      createPlayerState({ position: { ...MOVEMENT_SPAWN } }),
+      { ...IDLE_PLAYER_COMMAND, wireAimDirection: { x: 0, y: 1, z: 0 }, wireEdges: ['press'] },
+      counted,
+      1 / 60,
+    )
+
+    expect(MOVEMENT_TERRAIN).toHaveLength(1_896)
+    expect(raycastCalls).toBeLessThanOrEqual(65)
+  })
+
+  it('NaN과 zero ray는 비유한 hit를 만들지 않고 zero 후보는 유한 표면만 반환한다', () => {
+    const collider: StaticCollider = {
+      center: { x: 0, y: 0, z: 0 },
+      halfSize: { x: 1, y: 1, z: 1 },
+      wireable: true,
+    }
+    const world = createAabbCollisionWorld([collider]) as CandidateWorld
+
+    expect(world.raycast({ x: 0, y: 0, z: 0 }, { x: Number.NaN, y: 0, z: 0 }, 30)).toBeNull()
+    expect(world.raycast({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 0 }, 30)).toBeNull()
+    expect(world.queryWireCandidates?.(
+      { x: 0, y: 0, z: 0 },
+      { x: Number.NaN, y: 0, z: 0 },
+      30,
+    )).toEqual([])
+    const zeroCandidates = world.queryWireCandidates?.(
+      { x: 0, y: 0, z: 0 },
+      { x: 0, y: 0, z: 0 },
+      30,
+    ) ?? []
+    expect(zeroCandidates.length).toBeGreaterThan(0)
+    expect(zeroCandidates.every(({ point }) => (
+      Number.isFinite(point.x) && Number.isFinite(point.y) && Number.isFinite(point.z)
+    ))).toBe(true)
+    expect(zeroCandidates.every(({ point }) => pointOnSurface(point, collider))).toBe(true)
+  })
 })
+
+function press(world: CollisionWorld) {
+  return stepPlayer(
+    createPlayerState(),
+    { ...IDLE_PLAYER_COMMAND, wireAimDirection: { x: 0, y: 0, z: -1 }, wireEdges: ['press'] },
+    world,
+    1 / 60,
+  )
+}
 
 function pointOnSurface(point: Vec3, collider: StaticCollider): boolean {
   const inside = (['x', 'y', 'z'] as const).every((axis) => (

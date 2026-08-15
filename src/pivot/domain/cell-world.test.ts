@@ -8,6 +8,7 @@ import {
 } from './cell-world'
 import type { CellIndex, TerrainCell } from './cell-world'
 import { captureCells } from './capture'
+import { createAabbCollisionWorld } from './aabb-collision-world'
 import { IDLE_PLAYER_COMMAND } from './commands'
 import { createPlayerState, stepPlayer } from './player'
 import { createPivotSession } from './session'
@@ -67,19 +68,28 @@ describe('sparse 셀 월드', () => {
       { x: 15, y: 2, z: 1 },
       { wireable: true },
     )]
-    const player = stepPlayer(
+    const command = {
+      ...IDLE_PLAYER_COMMAND,
+      wireAimDirection: { x: 1, y: 0, z: 0 },
+      wireEdges: ['press'] as const,
+    }
+    const cellPlayer = stepPlayer(
+      createPlayerState(), command, createCellCollisionWorld(terrain), 1 / 60,
+    )
+    const legacyPlayer = stepPlayer(
       createPlayerState(),
-      {
-        ...IDLE_PLAYER_COMMAND,
-        wireAimDirection: { x: 1, y: 0, z: 0 },
-        wireEdges: ['press'],
-      },
-      createCellCollisionWorld(terrain),
+      command,
+      createAabbCollisionWorld([{
+        center: { x: 7.75, y: 1.25, z: 0.75 },
+        halfSize: { x: 0.25, y: 0.25, z: 0.25 },
+        wireable: true,
+      }]),
       1 / 60,
     )
 
-    expect(player.wire).not.toBeNull()
-    expect(player.wire?.anchor.z).toBeGreaterThan(0)
+    expect(cellPlayer.wire).not.toBeNull()
+    expect(cellPlayer.wire?.anchor).toEqual(legacyPlayer.wire?.anchor)
+    expect(cellPlayer.wire?.ropeLength).toBe(legacyPlayer.wire?.ropeLength)
   })
 })
 
