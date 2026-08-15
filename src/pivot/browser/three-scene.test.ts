@@ -131,4 +131,33 @@ describe('피벗 terrain renderer cache', () => {
     } as never)).toBe(true)
     expect(wireShouldBeVisible(null)).toBe(false)
   })
+
+  it('wire line은 실제 endpoint를 갱신하고 release에 숨기며 position buffer를 재사용한다', () => {
+    const updateWireLine = (
+      threeScene as unknown as Record<string, unknown>
+    ).updateWireLine
+    expect(typeof updateWireLine).toBe('function')
+    if (typeof updateWireLine !== 'function') return
+
+    const geometry = new THREE.BufferGeometry()
+    const line = new THREE.Line(geometry, new THREE.LineBasicMaterial())
+    updateWireLine(line, { x: 1, y: 2, z: 3 }, {
+      anchor: { x: 7, y: 8, z: 9 },
+      ropeLength: 12,
+    })
+    const firstAttribute = geometry.getAttribute('position')
+
+    expect(line.visible).toBe(true)
+    expect(Array.from(firstAttribute.array)).toEqual([1, 2.6, 3, 7, 8, 9])
+
+    updateWireLine(line, { x: 4, y: 5, z: 6 }, null)
+    expect(line.visible).toBe(false)
+
+    updateWireLine(line, { x: 4, y: 5, z: 6 }, {
+      anchor: { x: 10, y: 11, z: 12 },
+      ropeLength: 9,
+    })
+    expect(geometry.getAttribute('position')).toBe(firstAttribute)
+    expect(Array.from(firstAttribute.array)).toEqual([4, 5.6, 6, 10, 11, 12])
+  })
 })

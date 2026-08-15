@@ -378,6 +378,52 @@ describe('피벗 플레이어', () => {
     expect(player.wire).not.toBeNull()
   })
 
+  it('production AABB 접선 벽이 실제 swing 이동을 막으면 wire를 끝낸다', () => {
+    const wall: StaticCollider = {
+      center: { x: 1, y: 5, z: 0 },
+      halfSize: { x: 0.5, y: 5, z: 10 },
+      wireable: true,
+    }
+    const player = stepPlayer(
+      createPlayerState({
+        position: { x: 0, y: 0.9, z: 0 },
+        velocity: { x: 10, y: 0, z: 0 },
+        grounded: false,
+        wire: { anchor: { x: 0, y: 10, z: 0 }, ropeLength: 8.5 },
+      }),
+      IDLE_PLAYER_COMMAND,
+      createAabbCollisionWorld([wall]),
+      STEP_SECONDS,
+    )
+
+    expect(player.position.x).toBeLessThanOrEqual(0.10001)
+    expect(player.wire).toBeNull()
+  })
+
+  it('rope 보정은 production AABB가 확정한 벽 경계를 다시 침범하지 않는다', () => {
+    const wallLeft = 0
+    const wall: StaticCollider = {
+      center: { x: 0.5, y: 5, z: 0 },
+      halfSize: { x: 0.5, y: 5, z: 10 },
+      wireable: true,
+    }
+    const anchor = { x: wallLeft, y: 8, z: 0 }
+    let player = createPlayerState({
+      position: { x: -6, y: 7.4, z: 0 },
+      velocity: { x: 0, y: 0, z: 8 },
+      grounded: false,
+      wire: { anchor, ropeLength: 6 },
+    })
+    const world = createAabbCollisionWorld([wall])
+
+    for (let tick = 0; tick < 180 && player.wire !== null; tick += 1) {
+      player = stepPlayer(player, IDLE_PLAYER_COMMAND, world, STEP_SECONDS)
+      expect(player.position.x + player.halfSize.x).toBeLessThanOrEqual(wallLeft + 1e-10)
+    }
+
+    expect(player.wire).toBeNull()
+  })
+
   it('와이어 당김 중 카메라 로컬 횡조향을 적용한다', () => {
     const base = createPlayerState({
       grounded: false,
@@ -473,6 +519,24 @@ describe('피벗 플레이어', () => {
     }
   })
 
+  it('무입력 10초 swing은 projection 수치 감쇠로 기계 에너지를 잃지 않는다', () => {
+    const anchor = { x: 0, y: 8, z: 0 }
+    let player = createPlayerState({
+      position: { x: 6, y: 7.4, z: 0 },
+      velocity: { x: 0, y: 0, z: 8 },
+      grounded: false,
+      wire: { anchor, ropeLength: 6 },
+    })
+    const initialEnergy = mechanicalEnergy(player)
+
+    for (let tick = 0; tick < 600; tick += 1) {
+      player = stepPlayer(player, IDLE_PLAYER_COMMAND, integratingWorld(), STEP_SECONDS)
+    }
+
+    expect(player.wire).not.toBeNull()
+    expect(Math.abs(mechanicalEnergy(player) - initialEnergy)).toBeLessThan(initialEnergy * 0.05)
+  })
+
   it('release는 수평 운동량을 보존해 상향 포물선으로 anchor 위를 지난 뒤 하강한다', () => {
     const anchor = { x: 0, y: 3, z: 0 }
     let player = stepPlayer(
@@ -515,7 +579,9 @@ describe('피벗 플레이어', () => {
       STEP_SECONDS,
     )
 
-    expect(released.velocity.y).toBeGreaterThan(WIRE_RELEASE_UP_SPEED)
+    expect(released.velocity.x).toBeCloseTo(20, 10)
+    expect(released.velocity.y).toBeCloseTo(15 + (-24 * STEP_SECONDS), 10)
+    expect(released.velocity.z).toBeCloseTo(10, 10)
     expect(lengthVec3(released.velocity)).toBeLessThanOrEqual(MAX_WIRE_RELEASE_SPEED)
   })
 })
@@ -579,4 +645,8 @@ function normalizeFrom(origin: Vec3, target: Vec3): Vec3 {
 
 function dot(first: Vec3, second: Vec3): number {
   return first.x * second.x + first.y * second.y + first.z * second.z
+}
+
+function mechanicalEnergy(player: PlayerState): number {
+  return 0.5 * lengthVec3(player.velocity) ** 2 + 24 * playerWireOrigin(player.position).y
 }
