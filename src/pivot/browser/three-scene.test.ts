@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import * as THREE from 'three'
 
 import type { CapturePreview } from '../domain/capture'
@@ -169,5 +169,47 @@ describe('피벗 terrain renderer cache', () => {
     expect(firstAttribute.getX(1)).toBeCloseTo(10, 6)
     expect(firstAttribute.getY(1)).toBeCloseTo(11, 6)
     expect(firstAttribute.getZ(1)).toBeCloseTo(12, 6)
+  })
+})
+
+describe('피벗 combat renderer lifecycle', () => {
+  it('enemy와 양측 projectile 색을 만들고 entity 교체 시 이전 자원을 정확히 한 번 dispose한다', () => {
+    const syncCombatMeshes = (
+      threeScene as unknown as Record<string, unknown>
+    ).syncCombatMeshes
+    const disposeCombatMeshes = (
+      threeScene as unknown as Record<string, unknown>
+    ).disposeCombatMeshes
+    expect(typeof syncCombatMeshes).toBe('function')
+    expect(typeof disposeCombatMeshes).toBe('function')
+    if (typeof syncCombatMeshes !== 'function' || typeof disposeCombatMeshes !== 'function') return
+
+    const scene = new THREE.Scene()
+    const meshes: THREE.Object3D[] = []
+    syncCombatMeshes(scene, meshes, {
+      enemies: [{ id: 'enemy-a', alive: true, position: { x: 1, y: 2, z: 3 } }],
+      projectiles: [
+        { id: 'player-a', owner: 'player', position: { x: 0, y: 0, z: 0 }, radius: 0.12 },
+        { id: 'enemy-a', owner: 'enemy', position: { x: 0, y: 1, z: 0 }, radius: 0.12 },
+      ],
+    })
+    expect(meshes).toHaveLength(3)
+    expect(meshes.map((mesh) => (mesh as THREE.Mesh).material)
+      .map((material) => (material as THREE.MeshStandardMaterial).color.getHex()))
+      .toEqual([0xd63c3c, 0xffe066, 0xff6b35])
+
+    const disposals = meshes.map((mesh) => {
+      const geometry = (mesh as THREE.Mesh).geometry
+      const material = (mesh as THREE.Mesh).material as THREE.Material
+      const geometrySpy = vi.spyOn(geometry, 'dispose')
+      const materialSpy = vi.spyOn(material, 'dispose')
+      return { geometrySpy, materialSpy }
+    })
+    syncCombatMeshes(scene, meshes, { enemies: [], projectiles: [] })
+    disposeCombatMeshes(scene, meshes)
+    for (const { geometrySpy, materialSpy } of disposals) {
+      expect(geometrySpy).toHaveBeenCalledTimes(1)
+      expect(materialSpy).toHaveBeenCalledTimes(1)
+    }
   })
 })

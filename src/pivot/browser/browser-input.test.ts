@@ -73,6 +73,44 @@ describe('피벗 브라우저 입력 adapter', () => {
     expect(second.command.capturePressed).toBe(false)
   })
 
+  it('pointer lock 좌클릭 중복과 hold는 tick당 shoot edge 하나만 만들고 한 번 소비한다', () => {
+    let state = createBrowserInputState()
+    state = reduceBrowserInput(state, { type: 'pointer-lock', locked: true })
+    state = reduceBrowserInput(state, { type: 'mouse-down', button: 0 })
+    state = reduceBrowserInput(state, { type: 'mouse-down', button: 0 })
+
+    const first = sampleBrowserInput(state, FORWARD, FORWARD, {
+      origin: { x: 3, y: 2, z: 1 },
+      direction: FORWARD,
+      basis: { right: { x: 1, y: 0, z: 0 }, up: { x: 0, y: 1, z: 0 }, forward: FORWARD },
+    })
+    const held = sampleBrowserInput(first.state, FORWARD, FORWARD)
+
+    expect((first.command as unknown as { shootPressed: boolean }).shootPressed).toBe(true)
+    expect(first.command).toMatchObject({
+      shootOrigin: { x: 3, y: 2, z: 1 },
+      shootDirection: FORWARD,
+    })
+    expect((held.command as unknown as { shootPressed: boolean }).shootPressed).toBe(false)
+  })
+
+  it('shoot queue는 lock 밖에서 무시하고 pointer unlock과 blur에서 비운다', () => {
+    for (const clearEvent of [
+      { type: 'pointer-lock', locked: false } as const,
+      { type: 'blur' } as const,
+    ]) {
+      let state = createBrowserInputState()
+      state = reduceBrowserInput(state, { type: 'mouse-down', button: 0 })
+      expect((sampleBrowserInput(state, FORWARD, FORWARD).command as unknown as { shootPressed: boolean }).shootPressed)
+        .toBe(false)
+      state = reduceBrowserInput(state, { type: 'pointer-lock', locked: true })
+      state = reduceBrowserInput(state, { type: 'mouse-down', button: 0 })
+      state = reduceBrowserInput(state, clearEvent)
+      expect((sampleBrowserInput(state, FORWARD, FORWARD).command as unknown as { shootPressed: boolean }).shootPressed)
+        .toBe(false)
+    }
+  })
+
   it('capture edge는 lock 밖에서 무시하고 무틱 frame에 보존하며 unlock blur에서 지운다', () => {
     let state = createBrowserInputState()
     state = reduceBrowserInput(state, { type: 'mouse-down', button: 2 })
