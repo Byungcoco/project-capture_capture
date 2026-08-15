@@ -148,7 +148,12 @@ describe('피벗 terrain renderer cache', () => {
     const firstAttribute = geometry.getAttribute('position')
 
     expect(line.visible).toBe(true)
-    expect(Array.from(firstAttribute.array)).toEqual([1, 2.6, 3, 7, 8, 9])
+    expect(firstAttribute.getX(0)).toBeCloseTo(1, 6)
+    expect(firstAttribute.getY(0)).toBeCloseTo(2.6, 6)
+    expect(firstAttribute.getZ(0)).toBeCloseTo(3, 6)
+    expect(firstAttribute.getX(1)).toBeCloseTo(7, 6)
+    expect(firstAttribute.getY(1)).toBeCloseTo(8, 6)
+    expect(firstAttribute.getZ(1)).toBeCloseTo(9, 6)
 
     updateWireLine(line, { x: 4, y: 5, z: 6 }, null)
     expect(line.visible).toBe(false)
@@ -158,6 +163,11 @@ describe('피벗 terrain renderer cache', () => {
       ropeLength: 9,
     })
     expect(geometry.getAttribute('position')).toBe(firstAttribute)
-    expect(Array.from(firstAttribute.array)).toEqual([4, 5.6, 6, 10, 11, 12])
+    expect(firstAttribute.getX(0)).toBeCloseTo(4, 6)
+    expect(firstAttribute.getY(0)).toBeCloseTo(5.6, 6)
+    expect(firstAttribute.getZ(0)).toBeCloseTo(6, 6)
+    expect(firstAttribute.getX(1)).toBeCloseTo(10, 6)
+    expect(firstAttribute.getY(1)).toBeCloseTo(11, 6)
+    expect(firstAttribute.getZ(1)).toBeCloseTo(12, 6)
   })
 })
