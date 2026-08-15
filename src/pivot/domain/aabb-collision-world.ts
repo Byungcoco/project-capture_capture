@@ -25,7 +25,7 @@ export function createAabbCollisionWorld(colliders: readonly StaticCollider[]): 
           if (axis === 'y' && delta < 0) grounded = true
         }
       }
-      return { position, velocity, grounded, blocked }
+      return { position, velocity, grounded, blocked, contacts: [] }
     },
     raycast(origin, directionValue, maximumDistance): CollisionRayHit | null {
       const direction = normalizeVec3(directionValue)

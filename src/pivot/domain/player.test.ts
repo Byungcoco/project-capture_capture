@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest'
 
 import { IDLE_PLAYER_COMMAND } from './commands'
-import type { CollisionRayHit, CollisionWorld } from './collision-world'
+import { createAabbCollisionWorld } from './aabb-collision-world'
+import type {
+  CollisionContact,
+  CollisionRayHit,
+  CollisionWorld,
+} from './collision-world'
 import {
   JUMP_SPEED,
   MAX_WIRE_RELEASE_SPEED,
   createPlayerState,
   stepPlayer,
 } from './player'
-import type { PlayerState } from './player'
+import type { PlayerState, StaticCollider } from './player'
 import { speedOf } from './session'
 import type { Vec3 } from './math'
 
@@ -255,28 +260,39 @@ describe('피벗 플레이어', () => {
     expect(Math.hypot(player.velocity.x, player.velocity.z)).toBeLessThan(18)
   })
 
-  it('wire press와 release가 같은 tick이면 release가 최종 우선한다', () => {
+  it('wire release 다음 press면 새 anchor에 연결한다', () => {
     const command = {
       ...IDLE_PLAYER_COMMAND,
       aimDirection: { x: 1, y: 0.2, z: 0 },
-      wirePressed: true,
-      wireReleased: true,
+      wireEdges: ['release', 'press'] as const,
     }
-    const newlyTapped = stepPlayer(
-      createPlayerState(),
-      command,
-      queryWorld(VALID_WIRE_HIT),
-      STEP_SECONDS,
-    )
-    const alreadyPulling = stepPlayer(
-      createPlayerState({ wire: { anchor: VALID_WIRE_HIT.point, ticksRemaining: 20 } }),
+    const player = stepPlayer(
+      createPlayerState({
+        wire: { anchor: { x: -5, y: 3, z: 0 }, ticksRemaining: 20 },
+      }),
       command,
       queryWorld(VALID_WIRE_HIT),
       STEP_SECONDS,
     )
 
-    expect(newlyTapped.wire).toBeNull()
-    expect(alreadyPulling.wire).toBeNull()
+    expect(player.wire?.anchor).toEqual(VALID_WIRE_HIT.point)
+  })
+
+  it('wire press 다음 release면 최종 상태는 해제다', () => {
+    const player = stepPlayer(
+      createPlayerState({
+        wire: { anchor: { x: -5, y: 3, z: 0 }, ticksRemaining: 20 },
+      }),
+      {
+        ...IDLE_PLAYER_COMMAND,
+        aimDirection: { x: 1, y: 0.2, z: 0 },
+        wireEdges: ['press', 'release'],
+      },
+      queryWorld(VALID_WIRE_HIT),
+      STEP_SECONDS,
+    )
+
+    expect(player.wire).toBeNull()
   })
 
   it('와이어는 47번째 tick까지 유지되고 정확히 48번째 tick에 끝난다', () => {
@@ -308,7 +324,11 @@ describe('피벗 플레이어', () => {
   })
 
   it('와이어는 수평과 수직을 포함한 모든 이동 차단에서 끝난다', () => {
-    const verticallyBlocked = integratingWorld({ blocked: true, zeroVelocity: true })
+    const verticallyBlocked = integratingWorld({
+      blocked: true,
+      zeroVelocity: true,
+      contacts: [{ axis: 'y', normal: -1 }],
+    })
     const player = stepPlayer(
       createPlayerState({
         grounded: false,
@@ -320,6 +340,26 @@ describe('피벗 플레이어', () => {
     )
 
     expect(player.wire).toBeNull()
+  })
+
+  it('production AABB ground 지지는 수평 wire를 끊지 않는다', () => {
+    const ground: StaticCollider = {
+      center: { x: 0, y: -0.5, z: 0 },
+      halfSize: { x: 20, y: 0.5, z: 20 },
+      wireable: false,
+    }
+    const player = stepPlayer(
+      createPlayerState({
+        wire: { anchor: { x: 12, y: 1.5, z: 0 }, ticksRemaining: 30 },
+      }),
+      IDLE_PLAYER_COMMAND,
+      createAabbCollisionWorld([ground]),
+      STEP_SECONDS,
+    )
+
+    expect(player.grounded).toBe(true)
+    expect(player.position.x).toBeGreaterThan(0)
+    expect(player.wire).not.toBeNull()
   })
 
   it('와이어 당김 중 카메라 로컬 횡조향을 적용한다', () => {
@@ -345,6 +385,7 @@ interface IntegratingWorldOptions {
   blocked?: boolean
   zeroVelocity?: boolean
   maximumPlayerX?: number
+  contacts?: readonly CollisionContact[]
 }
 
 function integratingWorld(options: IntegratingWorldOptions = {}): CollisionWorld {
@@ -366,6 +407,7 @@ function integratingWorld(options: IntegratingWorldOptions = {}): CollisionWorld
         velocity: options.zeroVelocity ? { x: 0, y: 0, z: 0 } : { ...velocity },
         grounded: options.grounded ?? false,
         blocked,
+        contacts: options.contacts ?? [],
       }
     },
   }

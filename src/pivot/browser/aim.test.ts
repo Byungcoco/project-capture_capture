@@ -34,15 +34,64 @@ describe('피벗 단일 조준 계약', () => {
       30,
     )
 
-    expect(solution.aimPoint).toEqual({ x: 2, y: 4, z: -25 })
+    expect(Math.hypot(
+      solution.aimPoint.x,
+      solution.aimPoint.y - 1.5,
+      solution.aimPoint.z,
+    )).toBeCloseTo(30, 10)
+    expect(solution.aimPoint.x).toBe(2)
+    expect(solution.aimPoint.y).toBe(4)
+  })
+
+  it('player 기준 24에서 30미터 표면을 shoulder camera 확장 ray로 찾는다', () => {
+    const playerOrigin = { x: 0, y: 1.5, z: 0 }
+    const cameraOrigin = { x: 0, y: 3, z: 6 }
+    const target = { x: 0, y: 1.5, z: -27 }
+    const cameraDistance = Math.hypot(
+      target.x - cameraOrigin.x,
+      target.y - cameraOrigin.y,
+      target.z - cameraOrigin.z,
+    )
+    const queriedDistances: number[] = []
+    const world = queryWorld(
+      { point: target, distance: cameraDistance, wireable: true },
+      queriedDistances,
+    )
+    const cameraDirection = {
+      x: (target.x - cameraOrigin.x) / cameraDistance,
+      y: (target.y - cameraOrigin.y) / cameraDistance,
+      z: (target.z - cameraOrigin.z) / cameraDistance,
+    }
+
+    const solution = solveCameraAim(
+      world,
+      cameraOrigin,
+      cameraDirection,
+      playerOrigin,
+      30,
+    )
+
+    expect(queriedDistances[0]).toBeGreaterThan(cameraDistance)
+    expect(solution.aimPoint).toEqual(target)
+    expect(Math.hypot(
+      target.x - playerOrigin.x,
+      target.y - playerOrigin.y,
+      target.z - playerOrigin.z,
+    )).toBeLessThanOrEqual(30)
   })
 })
 
-function queryWorld(hit: ReturnType<CollisionWorld['raycast']>): CollisionWorld {
+function queryWorld(
+  hit: ReturnType<CollisionWorld['raycast']>,
+  distances?: number[],
+): CollisionWorld {
   return {
-    raycast: () => hit,
+    raycast: (_origin, _direction, maximumDistance) => {
+      distances?.push(maximumDistance)
+      return hit === null || hit.distance > maximumDistance ? null : hit
+    },
     moveAabb: (position, velocity) => ({
-      position, velocity, grounded: false, blocked: false,
+      position, velocity, grounded: false, blocked: false, contacts: [],
     }),
   }
 }

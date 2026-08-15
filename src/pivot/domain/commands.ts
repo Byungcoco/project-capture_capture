@@ -1,5 +1,7 @@
 import type { Vec3 } from './math'
 
+export type WireEdge = 'press' | 'release'
+
 export interface PlayerCommand {
   moveX: number
   moveZ: number
@@ -8,6 +10,7 @@ export interface PlayerCommand {
   dashPressed: boolean
   wirePressed: boolean
   wireReleased: boolean
+  wireEdges: readonly WireEdge[]
 }
 
 export const IDLE_PLAYER_COMMAND: PlayerCommand = {
@@ -18,4 +21,5 @@ export const IDLE_PLAYER_COMMAND: PlayerCommand = {
   dashPressed: false,
   wirePressed: false,
   wireReleased: false,
+  wireEdges: [],
 }

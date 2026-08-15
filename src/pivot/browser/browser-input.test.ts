@@ -16,7 +16,7 @@ describe('피벗 브라우저 입력 adapter', () => {
     expect(Math.sin(state.yaw)).toBeGreaterThan(0)
   })
 
-  it('E press와 release edge를 한 tick에 함께 전달하고 한 번만 소비한다', () => {
+  it('E press 다음 release 순서를 보존하고 한 번만 소비한다', () => {
     let state = createBrowserInputState()
     state = reduceBrowserInput(state, { type: 'key-down', code: 'KeyE', repeat: false })
     state = reduceBrowserInput(state, { type: 'key-up', code: 'KeyE' })
@@ -25,8 +25,20 @@ describe('피벗 브라우저 입력 adapter', () => {
 
     expect(first.command.wirePressed).toBe(true)
     expect(first.command.wireReleased).toBe(true)
+    expect(first.command.wireEdges).toEqual(['press', 'release'])
     expect(second.command.wirePressed).toBe(false)
     expect(second.command.wireReleased).toBe(false)
+    expect(second.command.wireEdges).toEqual([])
+  })
+
+  it('E release 다음 press 순서를 보존한다', () => {
+    let state = createBrowserInputState()
+    state = reduceBrowserInput(state, { type: 'key-up', code: 'KeyE' })
+    state = reduceBrowserInput(state, { type: 'key-down', code: 'KeyE', repeat: false })
+
+    const sample = sampleBrowserInput(state, FORWARD)
+
+    expect(sample.command.wireEdges).toEqual(['release', 'press'])
   })
 
   it('pointer lock 해제와 blur는 이동을 지우고 재진입 뒤 새 입력만 받는다', () => {

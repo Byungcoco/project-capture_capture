@@ -1,5 +1,5 @@
 import { IDLE_PLAYER_COMMAND } from '../domain/commands'
-import type { PlayerCommand } from '../domain/commands'
+import type { PlayerCommand, WireEdge } from '../domain/commands'
 import type { Vec3 } from '../domain/math'
 
 export type BrowserInputEvent =
@@ -18,6 +18,7 @@ export interface BrowserInputState {
   dashQueued: boolean
   wirePressedQueued: boolean
   wireReleasedQueued: boolean
+  wireEdgeQueue: readonly WireEdge[]
 }
 
 export interface BrowserInputSample {
@@ -35,6 +36,7 @@ export function createBrowserInputState(): BrowserInputState {
     pressedCodes: new Set(), yaw: 0, pitch: 0, pointerLocked: false,
     jumpQueued: false, dashQueued: false,
     wirePressedQueued: false, wireReleasedQueued: false,
+    wireEdgeQueue: [],
   }
 }
 
@@ -86,6 +88,7 @@ export function sampleBrowserInput(state: BrowserInputState, aimDirection: Vec3)
       dashQueued: false,
       wirePressedQueued: false,
       wireReleasedQueued: false,
+      wireEdgeQueue: [],
     },
     command: {
       ...IDLE_PLAYER_COMMAND,
@@ -96,6 +99,7 @@ export function sampleBrowserInput(state: BrowserInputState, aimDirection: Vec3)
       dashPressed: state.dashQueued,
       wirePressed: state.wirePressedQueued,
       wireReleased: state.wireReleasedQueued,
+      wireEdges: state.wireEdgeQueue,
     },
   }
 }
@@ -149,6 +153,7 @@ function clearTransientState(state: BrowserInputState): BrowserInputState {
     dashQueued: false,
     wirePressedQueued: false,
     wireReleasedQueued: true,
+    wireEdgeQueue: [],
   }
 }
 
