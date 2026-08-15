@@ -99,7 +99,7 @@ export function stepPlayer(
     jumpedThisTick = stepMovement(player, command, stepSeconds)
   }
 
-  if (!jumpedThisTick) {
+  if (!jumpedThisTick && player.wire === null) {
     player.velocity.y = Math.max(MAX_FALL_SPEED, player.velocity.y + GRAVITY * stepSeconds)
   }
 
