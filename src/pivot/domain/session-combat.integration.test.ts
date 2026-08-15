@@ -45,6 +45,47 @@ describe('전투 session 순서 통합', () => {
     expect(snapshot.projectiles).toEqual([])
   })
 
+  it('same-tick placement terrain은 첫 swept segment 안의 injected projectile을 즉시 차폐한다', () => {
+    let session = createPivotSession({
+      terrain: [],
+      captureStack: [wallChunk()],
+      enemies: [{
+        id: 'enemy-first-tick',
+        position: { x: 0.25, y: 0.25, z: -20.5 },
+        halfSize: { x: 0.55, y: 0.75, z: 0.55 },
+        hp: 75,
+        maxHp: 75,
+        nextShotTick: 999,
+        alive: true,
+      }],
+      projectiles: [{
+        id: 'placement-order',
+        owner: 'player',
+        position: { x: 0.25, y: 0.25, z: -18.5 },
+        velocity: { x: 0, y: 0, z: -120 },
+        damage: 25,
+        ttl: 108,
+        radius: 0.12,
+      }],
+      player: createPlayerState({ position: { x: 0.25, y: 0.25, z: 0 } }),
+    } as unknown as PivotSessionOptions)
+
+    session = stepPivotSession(session, {
+      ...IDLE_PLAYER_COMMAND,
+      placeReleased: true,
+      placementOrigin: { x: 0.25, y: 0.25, z: 0 },
+      placementDirection: { x: 0, y: 0, z: -1 },
+    })
+    const snapshot = session.snapshot as unknown as {
+      enemies: readonly { hp: number }[]
+      projectiles: readonly unknown[]
+    }
+
+    expect(session.snapshot.terrain.some(({ chunkId }) => chunkId === 'same-tick-wall')).toBe(true)
+    expect(snapshot.enemies[0]?.hp).toBe(75)
+    expect(snapshot.projectiles).toEqual([])
+  })
+
   it('기존 capture placement wire movement 명령과 combat snapshot 결정론을 함께 유지한다', () => {
     const options = {
       terrain: [],

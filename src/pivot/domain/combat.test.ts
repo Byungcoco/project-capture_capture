@@ -105,6 +105,51 @@ describe('피벗 기본 슈팅 전투', () => {
     expect(combat(next).projectiles).toEqual([])
   })
 
+  it.each([
+    {
+      label: 'side',
+      wall: { center: { x: 0.15, y: 0, z: -1.48 }, halfSize: { x: 0.05, y: 1, z: 0.1 } },
+      enemyPosition: { x: 0, y: 0, z: -2 },
+      velocity: { x: 0, y: 0, z: -180 },
+    },
+    {
+      label: 'corner',
+      wall: { center: { x: 0.1, y: 0.1, z: -1.45 }, halfSize: { x: 0.02, y: 0.02, z: 0.1 } },
+      enemyPosition: { x: 0, y: 0, z: -2 },
+      velocity: { x: 0, y: 0, z: -180 },
+    },
+    {
+      label: 'diagonal face',
+      wall: { center: { x: 0.95, y: 0, z: -0.95 }, halfSize: { x: 0.05, y: 1, z: 1 } },
+      enemyPosition: { x: 1.469, y: 0, z: -1.469 },
+      velocity: { x: 127.27922061357856, y: 0, z: -127.27922061357856 },
+    },
+  ])('swept sphere terrain $label 접촉은 center ray가 놓쳐도 뒤 target보다 먼저 차폐한다', ({
+    wall, enemyPosition, velocity,
+  }) => {
+    const enemy = testEnemy('enemy-behind-terrain', enemyPosition)
+    const projectile = testProjectile('sphere-sweep', 'player', { x: 0, y: 0, z: 0 }, velocity)
+    const session = createPivotSession({
+      colliders: [{ ...wall, wireable: false }],
+      enemies: [enemy],
+      projectiles: [projectile],
+      player: createPlayerState({ position: { x: 0, y: 4, z: 0 } }),
+    } as unknown as PivotSessionOptions)
+
+    const next = stepPivotSession(session, IDLE_PLAYER_COMMAND)
+
+    expect(combat(next).enemies[0]?.hp).toBe(75)
+    expect(combat(next).projectiles).toEqual([])
+  })
+
+  it.each([
+    'player-shot-1',
+    'enemy-shot-enemy-a-1',
+  ])('외부 projectile은 generated id namespace %s를 선점할 수 없다', (id) => {
+    expect(() => createCombatSession([], [testProjectile(id)]))
+      .toThrowError(expect.objectContaining({ code: 'INVALID_COMBAT_STATE' }))
+  })
+
   it('enemy는 안정 stagger tick에 player 중심으로 결정론적 탄환을 발사한다', () => {
     const enemy = testEnemy('enemy-a', { x: 3, y: 0, z: 0 }, 1)
     const first = stepPivotSession(createCombatSession([enemy]), IDLE_PLAYER_COMMAND)
@@ -147,6 +192,18 @@ describe('피벗 기본 슈팅 전투', () => {
     expect(combat(next).projectiles).toEqual([])
   })
 
+  it('tick 시작부터 world 경계 밖인 projectile은 swept damage 전에 선제 제거한다', () => {
+    const next = stepPivotSession(createCombatSession(
+      [testEnemy('enemy-outside', { x: 252, y: 0, z: 0 })],
+      [testProjectile('outside-hit', 'player', { x: 257, y: 0, z: 0 }, {
+        x: -600, y: 0, z: 0,
+      })],
+    ), IDLE_PLAYER_COMMAND)
+
+    expect(combat(next).enemies[0]?.hp).toBe(75)
+    expect(combat(next).projectiles).toEqual([])
+  })
+
   it('snapshot combat entity는 source와 깊은 alias가 없고 외부 변경을 허용하지 않는다', () => {
     const enemy = testEnemy('enemy-a', { x: 3, y: 2, z: 1 })
     const projectile = testProjectile('shot-a', 'player', { x: 0, y: 0, z: 0 }, {
@@ -176,6 +233,30 @@ describe('피벗 기본 슈팅 전투', () => {
       expect(() => createPivotSession({ terrain: [], ...invalid } as unknown as PivotSessionOptions))
         .toThrowError(expect.objectContaining({ code: 'INVALID_COMBAT_STATE' }))
     }
+  })
+
+  it('malformed null primitive non-array combat option도 TypeError 대신 안정 code로 거부한다', () => {
+    const malformedOptions = [
+      { enemies: [null] },
+      { enemies: [{ ...testEnemy('null-position'), position: null }] },
+      { enemies: 3 },
+      { projectiles: null },
+      { projectiles: [false] },
+      { projectiles: Array.from({ length: 4_097 }, (_, index) => testProjectile(`many-${index}`)) },
+    ]
+    for (const malformed of malformedOptions) {
+      expect(() => createPivotSession({ terrain: [], ...malformed } as unknown as PivotSessionOptions))
+        .toThrowError(expect.objectContaining({ code: 'INVALID_COMBAT_STATE' }))
+    }
+  })
+
+  it('비 ASCII external id도 locale이 아닌 code unit 순서로 snapshot을 고정한다', () => {
+    const session = createCombatSession([
+      testEnemy('ä'),
+      testEnemy('z'),
+    ])
+
+    expect(combat(session).enemies.map(({ id }) => id)).toEqual(['z', 'ä'])
   })
 })
 

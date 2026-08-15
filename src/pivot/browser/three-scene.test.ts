@@ -173,6 +173,54 @@ describe('피벗 terrain renderer cache', () => {
 })
 
 describe('피벗 combat renderer lifecycle', () => {
+  it('동일 ID entity는 mesh와 GPU 자원을 재사용하고 제거된 변경분만 dispose한다', () => {
+    const syncCombatMeshes = threeScene.syncCombatMeshes
+    const disposeCombatMeshes = threeScene.disposeCombatMeshes
+    const scene = new THREE.Scene()
+    const meshes: THREE.Object3D[] = []
+    const initial = {
+      enemies: [{
+        id: 'enemy-a', alive: true,
+        position: { x: 1, y: 2, z: 3 },
+        halfSize: { x: 0.55, y: 0.75, z: 0.55 },
+      }],
+      projectiles: [{
+        id: 'player-a', owner: 'player' as const,
+        position: { x: 0, y: 0, z: 0 }, radius: 0.12,
+      }],
+    }
+    syncCombatMeshes(scene, meshes, initial as never)
+    const enemyMesh = meshes[0] as THREE.Mesh
+    const projectileMesh = meshes[1] as THREE.Mesh
+    const enemyGeometryDispose = vi.spyOn(enemyMesh.geometry, 'dispose')
+    const projectileGeometryDispose = vi.spyOn(projectileMesh.geometry, 'dispose')
+
+    syncCombatMeshes(scene, meshes, initial as never)
+    expect(meshes[0]).toBe(enemyMesh)
+    expect(meshes[1]).toBe(projectileMesh)
+    expect(enemyGeometryDispose).not.toHaveBeenCalled()
+    expect(projectileGeometryDispose).not.toHaveBeenCalled()
+
+    syncCombatMeshes(scene, meshes, {
+      enemies: [{
+        ...initial.enemies[0],
+        position: { x: 4, y: 5, z: 6 },
+      }],
+      projectiles: [{
+        id: 'enemy-b', owner: 'enemy',
+        position: { x: 7, y: 8, z: 9 }, radius: 0.12,
+      }],
+    } as never)
+    expect(meshes[0]).toBe(enemyMesh)
+    expect(meshes[0]?.position.toArray()).toEqual([4, 5, 6])
+    expect(meshes[1]).not.toBe(projectileMesh)
+    expect(enemyGeometryDispose).not.toHaveBeenCalled()
+    expect(projectileGeometryDispose).toHaveBeenCalledTimes(1)
+
+    disposeCombatMeshes(scene, meshes)
+    expect(enemyGeometryDispose).toHaveBeenCalledTimes(1)
+  })
+
   it('enemy와 양측 projectile 색을 만들고 entity 교체 시 이전 자원을 정확히 한 번 dispose한다', () => {
     const syncCombatMeshes = (
       threeScene as unknown as Record<string, unknown>
