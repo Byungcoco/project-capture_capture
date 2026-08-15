@@ -1,7 +1,7 @@
 import type { PlayerCommand } from './commands'
 import { TICK_SECONDS } from '../../core/constants'
 import { createAabbCollisionWorld } from './aabb-collision-world'
-import { captureCells } from './capture'
+import { assertValidCaptureStack, captureCells } from './capture'
 import type { CapturedChunk } from './capture'
 import { assertValidTerrain, createCellCollisionWorld, sortTerrainCells } from './cell-world'
 import type { TerrainCell } from './cell-world'
@@ -70,6 +70,7 @@ export function createPivotSession(
   }
   const authorityColliders = cloneColliders(options.colliders ?? [])
   const snapshotColliders = freezeColliders(authorityColliders)
+  assertValidCaptureStack(options.captureStack ?? [])
   const terrain = freezeTerrain(terrainOption ?? [])
   const captureStack = freezeCaptureStack(options.captureStack ?? [])
   const state: WorldState = {

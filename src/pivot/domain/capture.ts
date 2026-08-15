@@ -27,6 +27,15 @@ export class CaptureStackValidationError extends Error {
   }
 }
 
+export function assertValidCaptureStack(stack: readonly CapturedChunk[]): void {
+  if (stack.length > CAPTURE_STACK_LIMIT) {
+    throw new CaptureStackValidationError(
+      'CAPTURE_STACK_LIMIT_EXCEEDED',
+      `capture stack은 ${CAPTURE_STACK_LIMIT}개를 초과할 수 없습니다.`,
+    )
+  }
+}
+
 export type CapturedChunkSource = 'terrain' | 'boss-terrain-projectile' | 'boss-orb'
 export type CaptureFailureCode =
   | 'BLOCKED_CAPTURE'
@@ -78,6 +87,7 @@ export function previewCapture(
   request: CaptureRequest,
   stack: readonly CapturedChunk[] = [],
 ): CapturePreview | null {
+  assertValidTerrain(terrain)
   const plan = planCapture({ terrain, stack }, request)
   if (plan.cubeCenter === null) return null
   return {

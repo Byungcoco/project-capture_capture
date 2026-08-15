@@ -68,5 +68,6 @@ function frame(timeMilliseconds: number): void {
 }
 
 window.addEventListener('resize', scene.resize)
+window.addEventListener('pagehide', scene.dispose, { once: true })
 scene.render(session.snapshot, input.getState())
 requestAnimationFrame(frame)

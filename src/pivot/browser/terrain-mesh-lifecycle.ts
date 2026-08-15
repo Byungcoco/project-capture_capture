@@ -10,13 +10,18 @@ export interface TerrainMeshLifecycle<T extends DisposableTerrainMesh> {
 
 export function createTerrainMeshLifecycle<T extends DisposableTerrainMesh>(): TerrainMeshLifecycle<T> {
   let meshes: readonly T[] = []
+  const release = (): void => {
+    for (const mesh of meshes) mesh.dispose()
+    meshes = []
+  }
   return {
     current: () => meshes,
     replace(next): void {
+      release()
       meshes = [...next]
     },
     dispose(): void {
-      meshes = []
+      release()
     },
   }
 }

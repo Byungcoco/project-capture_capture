@@ -7,6 +7,7 @@ import { CAPTURE_CUBE_SIZE, CAPTURE_MAX_CELLS } from '../domain/capture'
 import type { CapturePreview } from '../domain/capture'
 import { CELL_SIZE, cellCenter } from '../domain/cell-world'
 import type { TerrainCell, TerrainMaterial } from '../domain/cell-world'
+import { createTerrainMeshLifecycle } from './terrain-mesh-lifecycle'
 
 const PLAYER_COLOR = 0xffd166
 const TERRAIN_COLOR = 0x29465b
@@ -36,6 +37,7 @@ export interface PivotScene {
   getCameraRay(snapshot: GameSnapshot, view: BrowserInputState): Ray3
   render(snapshot: GameSnapshot, view: BrowserInputState, preview?: CapturePreview | null): void
   resize(): void
+  dispose(): void
 }
 
 export function createPivotScene(root: HTMLElement): PivotScene {
@@ -56,7 +58,7 @@ export function createPivotScene(root: HTMLElement): PivotScene {
 
   const cellGeometry = new THREE.BoxGeometry(CELL_SIZE, CELL_SIZE, CELL_SIZE)
   const cellMaterials = new Map<string, THREE.MeshStandardMaterial>()
-  const terrainMeshes: THREE.InstancedMesh[] = []
+  const terrainMeshLifecycle = createTerrainMeshLifecycle<THREE.InstancedMesh>()
   const cameraCollisionMeshes: THREE.InstancedMesh[] = []
   let renderedTerrain: readonly TerrainCell[] | null = null
 
@@ -113,11 +115,11 @@ export function createPivotScene(root: HTMLElement): PivotScene {
   function syncTerrain(terrain: readonly TerrainCell[]): void {
     if (!terrainNeedsSync(renderedTerrain, terrain)) return
     renderedTerrain = terrain
-    for (const mesh of terrainMeshes) {
+    for (const mesh of terrainMeshLifecycle.current()) {
       scene.remove(mesh)
     }
-    terrainMeshes.length = 0
     cameraCollisionMeshes.length = 0
+    const nextTerrainMeshes: THREE.InstancedMesh[] = []
     const groups = new Map<string, TerrainCell[]>()
     for (const cell of terrain) {
       const materialKey = `${cell.material}:${cell.collidable}:${cell.wireable}`
@@ -153,9 +155,10 @@ export function createPivotScene(root: HTMLElement): PivotScene {
       mesh.receiveShadow = true
       mesh.castShadow = true
       scene.add(mesh)
-      terrainMeshes.push(mesh)
+      nextTerrainMeshes.push(mesh)
       if (cells[0]?.collidable) cameraCollisionMeshes.push(mesh)
     }
+    terrainMeshLifecycle.replace(nextTerrainMeshes)
   }
 
   function updateCamera(snapshot: GameSnapshot, view: BrowserInputState): void {
@@ -246,7 +249,30 @@ export function createPivotScene(root: HTMLElement): PivotScene {
       updateCapturePreview(previewCube, previewCells, preview)
       renderer.render(scene, camera)
     },
+    dispose(): void {
+      for (const mesh of terrainMeshLifecycle.current()) scene.remove(mesh)
+      terrainMeshLifecycle.dispose()
+      cellGeometry.dispose()
+      for (const material of cellMaterials.values()) material.dispose()
+      previewCube.geometry.dispose()
+      disposeMaterial(previewCube.material)
+      previewCells.geometry.dispose()
+      disposeMaterial(previewCells.material)
+      player.geometry.dispose()
+      disposeMaterial(player.material)
+      wireGeometry.dispose()
+      disposeMaterial(wire.material)
+      renderer.dispose()
+    },
   }
+}
+
+function disposeMaterial(material: THREE.Material | readonly THREE.Material[]): void {
+  if (Array.isArray(material)) {
+    for (const entry of material) entry.dispose()
+    return
+  }
+  ;(material as THREE.Material).dispose()
 }
 
 function updateCapturePreview(
