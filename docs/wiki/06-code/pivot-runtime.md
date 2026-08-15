@@ -57,7 +57,8 @@ summary: develop-jaehyeok 피벗 런타임의 결정론 상태, 캡처·배치·
 
 - 틱 순서는 capture/placement transaction → player shot spawn → enemy scheduled spawn → projectile 이동·충돌·피해 → player 이동이다. 같은 틱에 배치된 셀도 그 틱의 탄환을 차폐한다.
 - 좌클릭은 pointer lock에서 boolean edge 하나로 합쳐지고 첫 physics sample에서 소비된다. unlock과 blur는 queue를 비운다.
-- player shot은 cooldown 8틱, 속도 50m/s, 피해 25, TTL 108, 반경 0.12m이고 id는 틱당 하나인 `player-shot-<tick>`이다. camera origin이 player 중심에서 2m를 넘으면 중심 앞 0.6m로 보정한다.
+- player shot은 cooldown 8틱, 속도 50m/s, 피해 25, TTL 108, 반경 0.12m이고 id는 틱당 하나인 `player-shot-<tick>`이다. camera origin이 player 중심에서 2m를 넘으면 총구를 중심 앞 0.6m로 보정한다.
+- 총구와 카메라가 떨어져 있으므로 발사 방향은 카메라 방향이 아니라 화면 중앙 조준선이 닿는 지점으로 수렴시킨다. 조준점은 카메라에서 90m(탄속 × TTL) 안의 terrain raycast와 살아 있는 enemy AABB 교차 중 가장 가까운 지점이고, 아무것도 없으면 90m 끝점이다. 총구에서 조준점까지가 1m 미만이거나 카메라 방향과 반대면 카메라 방향을 그대로 쓴다.
 - enemy는 고정형이고 HP 75, halfSize `{0.55,0.75,0.55}`다. 안정 id 순서와 정적 offset으로 150틱마다 발사 시점 player 중심을 향해 속도 10m/s, 피해 15, TTL 300 탄환을 만든다. HP 0이면 목록에서 제거된다.
 - 충돌은 한 틱 이동 구간 전체의 정확한 swept sphere-AABB 검사다. terrain, enemy와 player가 같은 face/edge/corner 접촉 기하를 사용하며 정지 projectile의 초기 overlap도 검사한다. terrain은 BVH로 가지치기하고 같은 거리면 terrain이 우선한다. 이 sweep은 custom world를 포함한 `CollisionWorld`의 필수 계약이다.
 - 제거 조건은 TTL 0, y < -20, 각 축 절댓값 256m 초과다. 틱 시작 시 이미 위반한 탄환은 충돌·피해 계산 전에 선제 제거한다. player HP는 0 미만으로 내려가지 않는다.
