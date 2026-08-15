@@ -171,6 +171,21 @@ describe('정육면체 절취 캡처', () => {
       cells: [],
     })
   })
+
+  it('preview와 transaction은 invalid terrain을 같은 validation code로 거부한다', () => {
+    const duplicateTerrain = [
+      terrainCell({ x: 0, y: 0, z: 0 }),
+      terrainCell({ x: 0, y: 0, z: 0 }, { material: 'wood' }),
+    ]
+
+    expect(() => previewCapture(duplicateTerrain, request(), [])).toThrowError(
+      expect.objectContaining({ code: 'DUPLICATE_CELL_KEY' }),
+    )
+    expect(() => captureCells(
+      { terrain: duplicateTerrain, stack: [] },
+      request(),
+    )).toThrowError(expect.objectContaining({ code: 'DUPLICATE_CELL_KEY' }))
+  })
 })
 
 function request(): CaptureRequest {

@@ -15,6 +15,17 @@ export const CAPTURE_CUBE_HALF_EXTENT = 1.5
 export const CAPTURE_RANGE = 18
 export const CAPTURE_MAX_CELLS = 216
 export const CAPTURE_STACK_LIMIT = 5
+export type CaptureStackValidationErrorCode = 'CAPTURE_STACK_LIMIT_EXCEEDED'
+
+export class CaptureStackValidationError extends Error {
+  constructor(
+    public readonly code: CaptureStackValidationErrorCode,
+    message: string,
+  ) {
+    super(message)
+    this.name = 'CaptureStackValidationError'
+  }
+}
 
 export type CapturedChunkSource = 'terrain' | 'boss-terrain-projectile' | 'boss-orb'
 export type CaptureFailureCode =

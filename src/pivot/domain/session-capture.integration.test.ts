@@ -6,6 +6,7 @@ import { createPlayerState } from './player'
 import { createPivotSession, stepPivotSession } from './session'
 import type { CollisionWorld } from './collision-world'
 import type { CapturedChunk } from './capture'
+import { CAPTURE_STACK_LIMIT } from './capture'
 
 const CAPTURE_COMMAND = {
   ...IDLE_PLAYER_COMMAND,
@@ -101,6 +102,20 @@ describe('셀 지형 session 통합', () => {
       10,
     )?.distance).toBeCloseTo(1.5, 10)
   })
+
+  it('초기 capture stack은 5개를 허용하고 6개를 안정 code로 거부한다', () => {
+    const fiveChunks = Array.from(
+      { length: CAPTURE_STACK_LIMIT },
+      (_, index) => capturedChunk(`initial-${index}`),
+    )
+    const accepted = createPivotSession({ terrain: captureWall(), captureStack: fiveChunks })
+
+    expect(accepted.state.captureStack).toHaveLength(5)
+    expect(() => createPivotSession({
+      terrain: captureWall(),
+      captureStack: [...fiveChunks, capturedChunk('initial-5')],
+    })).toThrowError(expect.objectContaining({ code: 'CAPTURE_STACK_LIMIT_EXCEEDED' }))
+  })
 })
 
 function captureWall(): TerrainCell[] {
@@ -132,5 +147,14 @@ function emptyWorld(): CollisionWorld {
       blocked: false,
       contacts: [],
     }),
+  }
+}
+
+function capturedChunk(id: string): CapturedChunk {
+  return {
+    id,
+    source: 'terrain',
+    captureBasis: structuredClone(CAPTURE_COMMAND.captureBasis),
+    cells: [],
   }
 }
