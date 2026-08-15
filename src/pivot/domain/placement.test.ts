@@ -72,13 +72,31 @@ describe('공중 청크 배치', () => {
     expect(preview.cells[0]?.index).toEqual(expectedAnchor)
   })
 
+  it('표면 normal 절댓값 동률은 X Y Z 순서로 anchor 축을 고른다', () => {
+    const state = placementState(
+      [terrainCell({ x: 0, y: 0, z: 0 })],
+      [chunk('corner')],
+    )
+
+    const preview = previewPlacement(state, {
+      ...request(),
+      origin: { x: 0.5, y: 0.25, z: 0.5 },
+      direction: { x: -1, y: 0, z: -1 },
+    })
+
+    expect(preview).toMatchObject({ valid: true, failureCode: null })
+    expect(preview.anchor).toEqual({ x: 1, y: 0, z: 0 })
+  })
+
   it('중복 지형 player 겹침 사거리 경계 중복 target은 원자적으로 거부한다', () => {
     const commonState = placementState([], [chunk('top')])
     const blockedTarget = { x: 40, y: 0, z: 0 }
     const cases = [
       {
         code: 'BLOCKED_PLACEMENT',
-        state: placementState([terrainCell(blockedTarget)], [chunk('top')]),
+        state: placementState([
+          { ...terrainCell(blockedTarget), collidable: false },
+        ], [chunk('top')]),
         request: { ...request(), origin: { x: 0.25, y: 0.25, z: 0.25 }, direction: { x: 1, y: 0, z: 0 } },
       },
       {
@@ -126,7 +144,7 @@ describe('공중 청크 배치', () => {
 
   it('preview와 transaction은 같은 failure code와 target cell을 쓰고 성공 시 총량을 보존한다', () => {
     const blocked = placementState(
-      [terrainCell({ x: 40, y: 0, z: 0 })],
+      [{ ...terrainCell({ x: 40, y: 0, z: 0 }), collidable: false }],
       [chunk('blocked')],
     )
     const blockedRequest = {
