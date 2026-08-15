@@ -3,7 +3,7 @@ title: Wiki Index
 type: reference
 status: verified
 tags: [wiki, generated-index, llm-context]
-updated: 2026-08-14
+updated: 2026-08-15
 generated: true
 summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 ---
@@ -12,8 +12,8 @@ summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 
 > 생성 파일이다. 직접 편집하지 말고 `python tools/wiki_sync.py sync`를 실행한다.
 
-- 생성 시각: 2026-08-14T20:11:52+09:00
-- 원본 문서: 19개
+- 생성 시각: 2026-08-15T16:28:10+09:00
+- 원본 문서: 23개
 
 ## product
 
@@ -34,6 +34,7 @@ summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 |---|---|---|---|---|
 | [[../03-tech/architecture|Architecture]] | verified | architecture, determinism, module-boundary | 기술 스택, 폴백 가능한 모듈 경계와 결정론 규칙의 원본. | 2026-08-14 |
 | [[../03-tech/capture-pipeline|Capture Pipeline]] | verified | capture, geometry, silhouette | 캡처→스탬프→붙여넣기 알고리즘 스펙의 원본. | 2026-08-13 |
+| [[../03-tech/proposals/develop-jaehyeok-implementation-design|develop-jaehyeok 피벗 구현 설계]] | draft | branch-pivot, implementation-design, voxel-terrain, third-person, deterministic-simulation | 3인칭 캡처 와이어 액션 피벗을 기존 본류 코드와 분리해 검증하기 위한 런타임 경계, 데이터 계약과 기술 선택. | 2026-08-15 |
 
 ## decision
 
@@ -47,20 +48,23 @@ summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 | [[../04-decisions/ADR-0006-adopt-flee-workflow|ADR-0006: project-flee 작업 체계 전면 채택]] | accepted | workflow, collaboration | 팀원의 검증된 협업 체계(위키·wiki_sync·TDD·Git Flow·dispatch)를 그대로 채택한 결정. | 2026-08-13 |
 | [[../04-decisions/ADR-0007-game-mode-fsm|ADR-0007: 게임 모드 FSM — core가 소유하고 render가 파생한다]] | accepted | game-mode, fsm, input, replay, determinism | 단일 GameMode FSM, 슬롯 기반 캡처, 조준을 리플레이에서 제외하는 이벤트 기록 방식을 정한 결정. | 2026-08-14 |
 | [[../04-decisions/ADR-0008-fixed-normalized-capture-frame|ADR-0008: 화면 비율 기반 고정 캡처 프레임]] | accepted | capture, frame, normalized-coordinates, prototype | 프로토타입 캡처 프레임을 뷰포트 너비 30%, 높이 40%로 고정하고 화면 정규화 좌표로 표현하는 결정. | 2026-08-14 |
+| [[../04-decisions/proposals/develop-jaehyeok-pivot|develop-jaehyeok 피벗 제안: 3인칭 캡처 와이어 액션]] | draft | branch-pivot, third-person-shooter, terrain-capture, wire-action, demo-scope | develop-jaehyeok 브랜치에서 3인칭 슈터·지형 절취 캡처·와이어 이동·공중 배치를 검증하고 추후 본류 설계로 선택 병합하기 위한 피벗 원본. | 2026-08-15 |
 
 ## progress
 
 | 문서 | 상태 | 태그 | 요약 | 갱신 |
 |---|---|---|---|---|
-| [[../05-progress/current|Current]] | verified | current-scope, vertical-slice | 지금 참인 상태, 다음 목표와 완료 조건만 유지하는 작업 원본. | 2026-08-14 |
+| [[../05-progress/current|Current]] | verified | current-scope, vertical-slice | 지금 참인 상태, 다음 목표와 완료 조건만 유지하는 작업 원본. | 2026-08-15 |
+| [[../05-progress/branches/develop-jaehyeok-implementation-plan|develop-jaehyeok 피벗 구현 계획]] | draft | branch-pivot, implementation-plan, tdd, vertical-slice, playtest | 3인칭 캡처 와이어 액션 데모를 위험이 큰 순서로 검증하는 단계별 TDD·브라우저 플레이테스트 계획. | 2026-08-15 |
 
 ## implementation
 
 | 문서 | 상태 | 태그 | 요약 | 갱신 |
 |---|---|---|---|---|
 | [[../06-code/capture|Capture and Prototype UI]] | verified | capture, stamp, game-mode, prototype-ui | 마일스톤 3의 순수 캡처 기하, 카메라 조준, 슬롯과 디버그 UI 구현 계약. | 2026-08-14 |
-| [[../06-code/index|Code Knowledge Index]] | verified | code-knowledge, navigation | 구현 지식이 쌓일 자리와 기록 기준을 정의하는 허브. | 2026-08-14 |
+| [[../06-code/index|Code Knowledge Index]] | verified | code-knowledge, navigation | 구현 지식이 쌓일 자리와 기록 기준을 정의하는 허브. | 2026-08-15 |
 | [[../06-code/core|Core Simulation]] | verified | player-physics, collision, determinism | 마일스톤 2의 틱 입력, 관성형 플레이어 물리와 확장 가능한 충돌 해결 계약. | 2026-08-14 |
+| [[../06-code/pivot-runtime|Pivot Runtime]] | verified | pivot-runtime, cell-terrain, placement, wire-action | develop-jaehyeok 피벗 런타임의 결정론 상태, 캡처·배치·와이어 계산 순서와 브라우저 경계. | 2026-08-15 |
 
 ## reference
 
