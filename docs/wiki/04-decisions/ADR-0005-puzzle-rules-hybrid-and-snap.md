@@ -1,13 +1,15 @@
 ---
 title: "ADR-0005: 혼합형 퍼즐 + 붙여넣기 스냅 규칙"
 type: decision
-status: accepted
+status: deprecated
 tags: [game-rules, level-design]
-updated: 2026-08-13
+updated: 2026-08-15
 summary: 다해법 허용 + 최소 캡처 기록, 프레임 자유 + 붙여넣기 스냅을 택한 이유.
 ---
 
 # ADR-0005: 혼합형 퍼즐 + 붙여넣기 스냅 규칙
+
+> [[ADR-0010-pivot-to-third-person-capture-action|ADR-0010]]으로 대체됐다. 퍼즐 다해법과 최소 캡처 기록은 폐기했고, 배치 스냅은 0.5m 셀 격자로 계승됐다. 이 문서는 이력 보존용이다.
 
 ## 맥락
 퍼즐의 성격(단일 정답 vs 다해법)과 배치 규칙(격자 vs 자유)이 레벨 디자인과 Hive 확장 스토리 모두에 영향을 주는 갈림길이었다.

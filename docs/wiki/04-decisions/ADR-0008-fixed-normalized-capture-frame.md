@@ -1,13 +1,15 @@
 ---
 title: "ADR-0008: 화면 비율 기반 고정 캡처 프레임"
 type: decision
-status: accepted
+status: deprecated
 tags: [capture, frame, normalized-coordinates, prototype]
-updated: 2026-08-14
+updated: 2026-08-15
 summary: 프로토타입 캡처 프레임을 뷰포트 너비 30%, 높이 40%로 고정하고 화면 정규화 좌표로 표현하는 결정.
 ---
 
 # ADR-0008: 화면 비율 기반 고정 캡처 프레임
+
+> [[ADR-0010-pivot-to-third-person-capture-action|ADR-0010]]으로 대체됐다. 캡처 단위가 화면 프레임에서 월드 공간 3m 정육면체 볼륨으로 바뀌었다. 이 문서는 이력 보존용이다.
 
 ## 맥락
 

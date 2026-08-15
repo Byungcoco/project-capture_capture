@@ -1,13 +1,15 @@
 ---
 title: "ADR-0004: 폴백 가능한 코어 아키텍처"
 type: decision
-status: accepted
+status: deprecated
 tags: [architecture, risk]
-updated: 2026-08-13
+updated: 2026-08-15
 summary: 직교 캡처 리스크에 대비해 코어를 2D 스탬프 게임으로 정의하고 판정일을 두는 결정.
 ---
 
 # ADR-0004: 폴백 가능한 코어 아키텍처
+
+> [[ADR-0011-cell-terrain-authority-architecture|ADR-0011]]로 대체됐다. 지형이 런타임에 잘리고 생기므로 "코어는 capture를 모른다"는 폴백 경계가 성립하지 않는다. 이 문서는 이력 보존용이다.
 
 ## 맥락
 직교 캡처는 이 게임의 독창성이지만 구현·폴리싱 리스크가 가장 큰 부분이다. 기한 내 제출이 최우선이므로 리스크가 실현될 경우의 착지 지점이 필요했다.

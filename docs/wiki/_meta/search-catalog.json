@@ -1,7 +1,7 @@
 {
   "generated": true,
-  "generatedAt": "2026-08-15T19:20:25+09:00",
-  "documentCount": 24,
+  "generatedAt": "2026-08-15T23:23:02+09:00",
+  "documentCount": 26,
   "documents": [
     {
       "path": "01-product/concept.md",
@@ -13,12 +13,13 @@
         "judging-criteria",
         "hive"
       ],
-      "updated": "2026-08-13",
+      "updated": "2026-08-15",
       "summary": "게임 한 줄 컨셉, 세계관과 심사기준 5개 대응 전략의 원본.",
       "headings": [
         "Concept",
         "한 줄 컨셉",
-        "심사기준 대응"
+        "심사기준 대응",
+        "이전 컨셉"
       ]
     },
     {
@@ -31,14 +32,14 @@
         "controls",
         "level-design"
       ],
-      "updated": "2026-08-14",
-      "summary": "확정된 게임 규칙, 조작 스킴 v2와 레벨 커리큘럼의 원본.",
+      "updated": "2026-08-15",
+      "summary": "확정된 게임 규칙, 3인칭 조작 스킴과 절취·배치·와이어·전투 규칙의 원본.",
       "headings": [
         "Game Rules",
         "확정 규칙",
-        "게임 모드와 조작 (v2)",
-        "모드 규칙",
-        "레벨 커리큘럼 (기술 도입 → 발전 → 반전 → 결합)"
+        "조작",
+        "전투",
+        "미확정"
       ]
     },
     {
@@ -66,15 +67,15 @@
         "determinism",
         "module-boundary"
       ],
-      "updated": "2026-08-14",
-      "summary": "기술 스택, 폴백 가능한 모듈 경계와 결정론 규칙의 원본.",
+      "updated": "2026-08-15",
+      "summary": "기술 스택, 셀 지형 권위 모듈 경계와 결정론 규칙의 원본.",
       "headings": [
         "Architecture",
         "기술 스택",
-        "모듈 경계 — 폴백 가능한 분리 (절대 규칙)",
-        "게임 모드와 상태 소유",
+        "모듈 경계 — 셀 지형 권위 (절대 규칙)",
+        "상태 소유와 틱 순서",
         "결정론 규칙 (리플레이의 전제 — 절대 규칙)",
-        "캡처 프레임 계약",
+        "캡처 볼륨 계약",
         "코드 컨벤션"
       ]
     },
@@ -85,13 +86,16 @@
       "status": "verified",
       "tags": [
         "capture",
-        "geometry",
-        "silhouette"
+        "cell-terrain",
+        "placement"
       ],
-      "updated": "2026-08-13",
-      "summary": "캡처→스탬프→붙여넣기 알고리즘 스펙의 원본.",
+      "updated": "2026-08-15",
+      "summary": "지형 절취 캡처와 배치 알고리즘 스펙의 원본.",
       "headings": [
-        "Capture Pipeline"
+        "Capture Pipeline",
+        "절취",
+        "배치",
+        "결정론"
       ]
     },
     {
@@ -155,12 +159,12 @@
       "path": "04-decisions/ADR-0001-orthographic-capture-concept.md",
       "title": "ADR-0001: 직교 캡처 퍼즐 플랫포머 컨셉 채택",
       "type": "decision",
-      "status": "accepted",
+      "status": "deprecated",
       "tags": [
         "concept",
         "originality"
       ],
-      "updated": "2026-08-13",
+      "updated": "2026-08-15",
       "summary": "원안 2D 캡처를 직교 3D 캡처 + 지형 속성으로 확장 채택한 이유와 대안.",
       "headings": [
         "ADR-0001: 직교 캡처 퍼즐 플랫포머 컨셉 채택",
@@ -215,12 +219,12 @@
       "path": "04-decisions/ADR-0004-fallback-core-architecture.md",
       "title": "ADR-0004: 폴백 가능한 코어 아키텍처",
       "type": "decision",
-      "status": "accepted",
+      "status": "deprecated",
       "tags": [
         "architecture",
         "risk"
       ],
-      "updated": "2026-08-13",
+      "updated": "2026-08-15",
       "summary": "직교 캡처 리스크에 대비해 코어를 2D 스탬프 게임으로 정의하고 판정일을 두는 결정.",
       "headings": [
         "ADR-0004: 폴백 가능한 코어 아키텍처",
@@ -235,12 +239,12 @@
       "path": "04-decisions/ADR-0005-puzzle-rules-hybrid-and-snap.md",
       "title": "ADR-0005: 혼합형 퍼즐 + 붙여넣기 스냅 규칙",
       "type": "decision",
-      "status": "accepted",
+      "status": "deprecated",
       "tags": [
         "game-rules",
         "level-design"
       ],
-      "updated": "2026-08-13",
+      "updated": "2026-08-15",
       "summary": "다해법 허용 + 최소 캡처 기록, 프레임 자유 + 붙여넣기 스냅을 택한 이유.",
       "headings": [
         "ADR-0005: 혼합형 퍼즐 + 붙여넣기 스냅 규칙",
@@ -275,7 +279,7 @@
       "path": "04-decisions/ADR-0007-game-mode-fsm.md",
       "title": "ADR-0007: 게임 모드 FSM — core가 소유하고 render가 파생한다",
       "type": "decision",
-      "status": "accepted",
+      "status": "deprecated",
       "tags": [
         "game-mode",
         "fsm",
@@ -283,7 +287,7 @@
         "replay",
         "determinism"
       ],
-      "updated": "2026-08-14",
+      "updated": "2026-08-15",
       "summary": "단일 GameMode FSM, 슬롯 기반 캡처, 조준을 리플레이에서 제외하는 이벤트 기록 방식을 정한 결정.",
       "headings": [
         "ADR-0007: 게임 모드 FSM — core가 소유하고 render가 파생한다",
@@ -298,14 +302,14 @@
       "path": "04-decisions/ADR-0008-fixed-normalized-capture-frame.md",
       "title": "ADR-0008: 화면 비율 기반 고정 캡처 프레임",
       "type": "decision",
-      "status": "accepted",
+      "status": "deprecated",
       "tags": [
         "capture",
         "frame",
         "normalized-coordinates",
         "prototype"
       ],
-      "updated": "2026-08-14",
+      "updated": "2026-08-15",
       "summary": "프로토타입 캡처 프레임을 뷰포트 너비 30%, 높이 40%로 고정하고 화면 정규화 좌표로 표현하는 결정.",
       "headings": [
         "ADR-0008: 화면 비율 기반 고정 캡처 프레임",
@@ -339,10 +343,55 @@
       ]
     },
     {
+      "path": "04-decisions/ADR-0010-pivot-to-third-person-capture-action.md",
+      "title": "ADR-0010: 3인칭 캡처 와이어 액션으로 제품 피벗",
+      "type": "decision",
+      "status": "accepted",
+      "tags": [
+        "product-pivot",
+        "third-person-action",
+        "terrain-capture",
+        "core-verb"
+      ],
+      "updated": "2026-08-15",
+      "summary": "장르와 핵심 동사를 직교 실루엣 퍼즐 플랫포머에서 3인칭 지형 절취 액션으로 바꾸고 ADR-0001·0005·0007·0008을 대체하는 결정.",
+      "headings": [
+        "ADR-0010: 3인칭 캡처 와이어 액션으로 제품 피벗",
+        "맥락",
+        "결정",
+        "이유",
+        "고려한 대안",
+        "판정 결과",
+        "영향"
+      ]
+    },
+    {
+      "path": "04-decisions/ADR-0011-cell-terrain-authority-architecture.md",
+      "title": "ADR-0011: 셀 지형 권위 아키텍처",
+      "type": "decision",
+      "status": "accepted",
+      "tags": [
+        "architecture",
+        "cell-terrain",
+        "determinism",
+        "module-boundary"
+      ],
+      "updated": "2026-08-15",
+      "summary": "0.5m 셀 지형 배열을 시뮬레이션 권위 원본으로 두고 2D 스탬프 폴백 코어를 대체하는 결정.",
+      "headings": [
+        "ADR-0011: 셀 지형 권위 아키텍처",
+        "맥락",
+        "결정",
+        "이유",
+        "고려한 대안",
+        "영향"
+      ]
+    },
+    {
       "path": "04-decisions/proposals/develop-jaehyeok-pivot.md",
       "title": "develop-jaehyeok 피벗 제안: 3인칭 캡처 와이어 액션",
       "type": "decision",
-      "status": "draft",
+      "status": "deprecated",
       "tags": [
         "branch-pivot",
         "third-person-shooter",
@@ -369,8 +418,7 @@
         "보스",
         "일반 적",
         "첫 플레이 가능 데모의 최소 루프",
-        "기존 설계와의 변경 매트릭스",
-        "본류 융화 절차",
+        "융화 결과 (2026-08-15 완료)",
         "미확정 질문",
         "캡처와 스택",
         "배치와 이동",
@@ -469,7 +517,7 @@
       "headings": [
         "Current",
         "현재 상태",
-        "다음 목표 — 마일스톤 3 플레이테스트",
+        "다음 목표 — 피벗 브랜치 통합과 수동 플레이테스트",
         "완료 조건",
         "이번 범위에서 제외"
       ]

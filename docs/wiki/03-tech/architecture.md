@@ -3,57 +3,46 @@ title: Architecture
 type: technology
 status: verified
 tags: [architecture, determinism, module-boundary]
-updated: 2026-08-14
-summary: 기술 스택, 폴백 가능한 모듈 경계와 결정론 규칙의 원본.
+updated: 2026-08-15
+summary: 기술 스택, 셀 지형 권위 모듈 경계와 결정론 규칙의 원본.
 ---
 
 # Architecture
 
 ## 기술 스택
 
-Vite + TypeScript(strict) + Three.js(npm). 번들 결과가 정적 웹 빌드로 나와야 한다. 물리는 외부 엔진 없이 자체 구현. 렌더는 3D(직교 카메라), 게임플레이 판정은 2D. 근거는 [[../04-decisions/ADR-0002-web-stack-vite-ts-three|ADR-0002]].
+Vite + TypeScript(strict) + Three.js(npm). 번들 결과가 정적 웹 빌드로 나와야 한다. 물리는 외부 엔진 없이 자체 구현. 렌더와 게임플레이 판정 모두 3D다. 근거는 [[../04-decisions/ADR-0002-web-stack-vite-ts-three|ADR-0002]].
 
-## 모듈 경계 — 폴백 가능한 분리 (절대 규칙)
+## 모듈 경계 — 셀 지형 권위 (절대 규칙)
 
-코어 게임은 "2D 스탬프를 받아 지형으로 배치하는 게임"이다. 직교 캡처는 스탬프를 생성하는 하나의 소스 모듈일 뿐이다. 직교 파트가 완성도에 도달하지 못하면 순수 2D 캡처 게임으로 폴백한다. 근거는 [[../04-decisions/ADR-0004-fallback-core-architecture|ADR-0004]].
+0.5m 셀 지형 배열이 충돌, 캡처, 배치 검증, 와이어 raycast, 투사체 차폐와 렌더의 단일 권위 원본이다. 근거는 [[../04-decisions/ADR-0011-cell-terrain-authority-architecture|ADR-0011]].
 
-- core/    고정 타임스텝 루프, 입력, 플레이어 물리, 2D 충돌, 스테이지 로드, 골 판정
-- stamp/   Stamp 자료구조(2D 폴리곤 조각 + 속성 태그), 스탬프 배치(지오메트리+콜라이더 생성)
-- capture/ 직교 캡처 파이프라인. core는 capture를 몰라도 동작해야 한다
-- render/  Three.js 씬, 직교 카메라, 카메라 회전 연출
-- ui/      캡처 프레임 오버레이, HUD
+- pivot/domain/  고정 타임스텝 session, 셀 지형, 플레이어 물리와 충돌, 캡처·배치, 와이어, 전투. Three.js와 DOM을 import하지 않는다
+- pivot/browser/ Three.js 씬, 카메라, 입력, HUD. 스냅샷을 읽기만 한다
+- pivot/demo/    데모 코스와 콘텐츠 데이터
 
 게임 루프와 시뮬레이션을 렌더·DOM 생명주기에 종속시키지 않는다.
 
-## 게임 모드와 상태 소유
+기존 `src/core`, `src/stamp`, `src/capture`, `src/render`, `src/ui`는 직교 퍼즐 시절의 모듈이며 목표 플레이 경로에서 빠졌다. 제거 시점은 별도 정리 작업으로 다룬다.
 
-이 설계에 동기화는 없다. core가 진실을 쓰고, render는 그걸 읽어 표현을
-파생한다. 화살표는 언제나 core → render 한 방향이며, "동기화"라는 말이
+## 상태 소유와 틱 순서
+
+이 설계에 동기화는 없다. session이 진실을 쓰고, render는 그걸 읽어 표현을
+파생한다. 화살표는 언제나 domain → browser 한 방향이며, "동기화"라는 말이
 떠오르는 순간이 곧 설계가 어긋나는 순간이다.
 
 | 구성 요소 | 계층 | 소유하는 상태 | 참조하는 것 |
 |---|---|---|---|
-| GameMode FSM | core (틱, 리플레이 대상) | 현재 모드라는 진실 | 입력 매퍼의 명령 |
-| PlayerState | core (틱, 리플레이 대상) | 물리 사실 | stepPlayer가 받은 명령 |
-| AnimationFSM | render (프레임, 코스메틱) | 클립 선택과 표현의 관성 | core의 PlayerState |
-| 비네트·프레임 UI | render | 연출 상태 | core의 GameMode |
+| 셀 지형 배열 | domain (틱, 리플레이 대상) | 월드의 진실 | 캡처·배치 transaction |
+| PlayerState | domain (틱, 리플레이 대상) | 물리 사실과 와이어 상태 | stepPlayer가 받은 명령 |
+| CombatState | domain (틱, 리플레이 대상) | 체력, 적, 투사체 | 같은 틱의 명령과 지형 |
+| 카메라·조준 | browser (프레임) | 시점과 조준 ray | 스냅샷의 플레이어 위치 |
+| mesh 생명주기 | browser (프레임, 코스메틱) | GPU 자원 캐시 | 스냅샷의 엔티티 id |
 
-- GameMode FSM은 Platform / CaptureAim / Paste 세 상태를 가진다. 모드 전이와
-  확정된 Capture/Paste 이벤트만 core 입력으로 들어가 리플레이에 기록된다.
-- 입력 매퍼가 원시 입력을 현재 모드에 맞는 의미 명령으로 번역한다.
-  stepPlayer는 자기가 어느 모드에 있는지 모른 채, 받은 명령대로만 움직인다.
-- 고정 틱 루프 호출은 계속되지만 CaptureAim/Paste에서는 월드 엔티티
-  (플레이어 물리, 움직이는 지형, 위험물)의 갱신을 건너뛴다.
-- CaptureAim의 카메라 각도와 프레임 위치는 render/UI가 소유하는 로컬 조준
-  상태이며 틱 입력이나 리플레이에 기록하지 않는다. 좌클릭으로 확정할 때의
-  카메라·프레임 파라미터만 Capture 이벤트로 core에 전달한다.
-- PlayerState는 물리 사실만 가진다: position, velocity, grounded, facing.
-  facing은 마지막으로 0이 아니었던 수평 입력의 부호로 갱신한다
-  (스프라이트 좌우 반전에 쓰인다, 예정).
-- 애니메이션 상태(idle/run/jump/fall)는 render 계층의 파생 FSM이다.
-  매 프레임 PlayerState로부터 다시 계산하되, "착지 모션은 최소 몇 프레임은
-  보여준다" 같은 표현의 관성만 자기 상태로 가진다. 리플레이에는 기록하지
-  않는다 — 재생할 때 다시 파생하면 그만이다.
+- 모드 FSM은 없다. 입력은 상황에 따라 의미가 바뀌지 않으며 명령 구조체 하나로 매 틱 수집된다.
+- 한 틱의 계산 순서는 capture → placement → player shot spawn → enemy spawn → 투사체 이동·충돌·피해 → 플레이어 이동으로 고정한다. 같은 틱에 생성된 셀도 그 틱의 충돌·와이어·차폐 대상이다.
+- 카메라 각도와 조준 방향은 browser가 소유하는 프레임 상태지만, 확정된 조준 ray는 명령으로 domain에 전달되어 틱에 기록된다.
+- 외부에서 주입되는 상태(적, 투사체, 캡처 청크)는 신뢰 경계다. 구조와 범위를 검증하고 안정 error code로 거부한다.
 
 ## 결정론 규칙 (리플레이의 전제 — 절대 규칙)
 
@@ -64,17 +53,17 @@ Vite + TypeScript(strict) + Three.js(npm). 번들 결과가 정적 웹 빌드로
 
 근거는 [[../04-decisions/ADR-0003-deterministic-fixed-timestep|ADR-0003]].
 
-## 캡처 프레임 계약
+## 캡처 볼륨 계약
 
-- 수직 슬라이스의 캡처 프레임은 뷰포트 너비의 30%, 높이의 40%인 화면 비율 기반 고정 크기다.
-- 프레임 중심과 경계는 화면 정규화 좌표로 표현한다. 창 크기가 달라도 캡처 범위를 일관되게 유지하고, UI 좌표를 캡처 계산에 그대로 전달하기 위해서다.
-- 플레이어는 인게임에서 프레임 크기를 직접 바꿀 수 없다. 플레이테스트로 기본 비율은 조정할 수 있으며, 캡처별·캡처 가능 횟수별 가변 크기는 향후 게임 규칙 정책으로 확장할 수 있다.
+- 캡처는 화면 프레임이 아니라 월드 공간의 시선 정렬 정육면체 볼륨이다. 조준한 첫 표면을 중심으로 3m 정육면체 안의 셀을 선택한다.
+- 볼륨 크기와 사거리는 월드 단위로 고정하므로 창 크기와 무관하다.
+- 상세 계약의 원본은 [[capture-pipeline|Capture Pipeline]]과 [[../06-code/pivot-runtime|Pivot Runtime]]이다.
 
-근거는 [[../04-decisions/ADR-0008-fixed-normalized-capture-frame|ADR-0008]].
+근거는 [[../04-decisions/ADR-0010-pivot-to-third-person-capture-action|ADR-0010]].
 
 ## 코드 컨벤션
 
-- TypeScript strict. 게임 상수는 constants.ts에 모은다 (PLAY_PLANE, TICK_RATE, FRAME_W/H 등).
+- TypeScript strict. 게임 상수는 해당 도메인 모듈 최상단에 export 상수로 모은다 (CELL_SIZE, WIRE_RANGE, PLAYER_SHOT_SPEED 등).
 - 좌표·변환은 Three.js 기본인 오른손 좌표계(+X 오른쪽, +Y 위, 기준 정면 뷰에서 +Z 화면 바깥쪽)와 열벡터 `v′ = Mv`를 따르며, 카메라 전방은 세계축이 아니라 카메라 로컬 -Z다. `Matrix4.set(...)` 인수·문서 표기는 행 우선이지만 내부 `elements` 저장과 계산은 열 우선이므로 혼동하지 않는다.
 - 주석·커밋은 한글, 식별자는 영어. 매직 넘버 금지.
 - console.log는 디버그 플래그 뒤에 둔다.

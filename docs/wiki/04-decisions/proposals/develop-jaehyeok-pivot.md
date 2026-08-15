@@ -1,7 +1,7 @@
 ---
 title: "develop-jaehyeok 피벗 제안: 3인칭 캡처 와이어 액션"
 type: decision
-status: draft
+status: deprecated
 tags: [branch-pivot, third-person-shooter, terrain-capture, wire-action, demo-scope]
 updated: 2026-08-15
 summary: develop-jaehyeok 브랜치에서 3인칭 슈터·지형 절취 캡처·와이어 이동·공중 배치를 검증하고 추후 본류 설계로 선택 병합하기 위한 피벗 원본.
@@ -9,9 +9,11 @@ summary: develop-jaehyeok 브랜치에서 3인칭 슈터·지형 절취 캡처·
 
 # develop-jaehyeok 피벗 제안: 3인칭 캡처 와이어 액션
 
+> **이 제안은 2026-08-15에 승인·융화됐고 더 이상 원본이 아니다.** 판정 결과와 확정 규칙은 [[../ADR-0010-pivot-to-third-person-capture-action|ADR-0010]](장르·핵심 동사)와 [[../ADR-0011-cell-terrain-authority-architecture|ADR-0011]](아키텍처)로 이동했다. 현재 사실은 [[../../01-product/concept|Concept]], [[../../02-design/gameplay/game-rules|Game Rules]], [[../../03-tech/architecture|Architecture]], [[../../03-tech/capture-pipeline|Capture Pipeline]], [[../../06-code/pivot-runtime|Pivot Runtime]]에서 읽는다. 이 문서는 제안 당시의 맥락과 미확정 질문을 남기는 이력이다.
+
 ## 문서 지위와 적용 범위
 
-이 문서는 `develop-jaehyeok` 브랜치에서만 적용하는 **피벗 변경 제안의 단일 원본**이다. 아직 `develop`·`main`의 확정 설계를 대체하지 않는다.
+이 문서는 `develop-jaehyeok` 브랜치의 **피벗 변경 제안**이었다. 승인 후 확정 규칙은 위 원본들로 이동했다.
 
 - 이 문서에 명시하지 않은 규칙은 기존 [[../../01-product/concept|Concept]], [[../../02-design/gameplay/game-rules|Game Rules]], [[../../03-tech/architecture|Architecture]], [[../../03-tech/capture-pipeline|Capture Pipeline]]을 참고한다.
 - 기존 문서와 충돌하면 이 브랜치에서는 이 문서의 `확정 피벗 규칙`을 우선한다.
@@ -130,32 +132,24 @@ summary: develop-jaehyeok 브랜치에서 3인칭 슈터·지형 절취 캡처·
 
 데모는 이 루프가 처음부터 끝까지 한 번 이어질 때 성립한다. 일반 적의 완성도, 다중 맵, 성장, 장비와 장기 콘텐츠는 이 루프 이후다.
 
-## 기존 설계와의 변경 매트릭스
+## 융화 결과 (2026-08-15 완료)
 
-| 기존 원본 | 본류의 현재 규칙 | 피벗에서의 취급 | 본류 채택 시 반영 위치 |
-|---|---|---|---|
-| [[../../01-product/concept|Concept]] | 직교 3D 실루엣을 2D 지형으로 복사하는 퍼즐 플랫포머 | 한 줄 콘셉트와 장르를 대체하는 후보 | Concept 갱신 + 제품 피벗 ADR |
-| [[../../02-design/gameplay/game-rules|Game Rules]] | Platform/CaptureAim/Paste 모드와 2D 이동 | 3인칭 슈팅·절취·공중 배치·와이어 이동으로 대체 | 게임플레이 원본을 분야별로 분리하고 규칙 갱신 |
-| [[../../03-tech/architecture|Architecture]] | 2D core와 3D render, capture는 Stamp 생성 소스 | 3D 월드 절취·배치가 권위 시뮬레이션에 들어가므로 재설계 필요 | 아키텍처 ADR + 모듈 경계 갱신 |
-| [[../../03-tech/capture-pipeline|Capture Pipeline]] | 화면 실루엣 투영·볼록 껍질·2D 클리핑 | 시선 정렬 정육면체 볼륨 절취로 대체 | 별도 3D 절취 파이프라인 원본 작성 |
-| [[../ADR-0001-orthographic-capture-concept|ADR-0001]] | 직교 실루엣 캡처 채택 | 피벗 검증 중에만 효력 보류 후보 | 새 ADR에서 supersede 여부 명시 |
-| [[../ADR-0004-fallback-core-architecture|ADR-0004]] | 2D 스탬프 코어로 폴백 | 피벗 구조와 충돌 | 새 아키텍처 ADR에서 supersede 여부 명시 |
-| [[../ADR-0005-puzzle-rules-hybrid-and-snap|ADR-0005]] | 퍼즐 다해법·반 칸 스냅 | 장르 변경으로 재평가 | 유지 가능한 배치 UX만 선별 채택 |
-| [[../ADR-0007-game-mode-fsm|ADR-0007]] | Platform/CaptureAim/Paste FSM | 실시간 전투를 끊지 않는 능력 상태로 재설계 | 입력·능력 FSM ADR 작성 |
-| [[../ADR-0008-fixed-normalized-capture-frame|ADR-0008]] | 화면 비율 기반 고정 프레임 | 월드 공간 정육면체 볼륨으로 대체 | 캡처 볼륨 ADR 작성 |
+| 기존 원본 | 판정과 결과 | 이동한 위치 |
+|---|---|---|
+| [[../../01-product/concept|Concept]] | 한 줄 컨셉과 심사기준 대응을 3인칭 절취 액션으로 교체 | Concept 갱신 완료 |
+| [[../../02-design/gameplay/game-rules|Game Rules]] | 모드·2D 규칙 폐기, 절취·배치·와이어·전투 규칙으로 교체 | Game Rules 갱신 완료 |
+| [[../../03-tech/architecture|Architecture]] | 셀 지형 권위와 domain/browser/demo 경계로 교체 | Architecture 갱신 완료 |
+| [[../../03-tech/capture-pipeline|Capture Pipeline]] | 실루엣 투영 폐기, 셀 절취·배치 파이프라인으로 교체 | Capture Pipeline 갱신 완료 |
+| [[../ADR-0001-orthographic-capture-concept|ADR-0001]] | 폐기 | [[../ADR-0010-pivot-to-third-person-capture-action|ADR-0010]]이 대체 |
+| [[../ADR-0004-fallback-core-architecture|ADR-0004]] | 폐기 | [[../ADR-0011-cell-terrain-authority-architecture|ADR-0011]]이 대체 |
+| [[../ADR-0005-puzzle-rules-hybrid-and-snap|ADR-0005]] | 폐기, 배치 스냅만 셀 격자로 계승 | ADR-0010이 대체 |
+| [[../ADR-0007-game-mode-fsm|ADR-0007]] | 폐기, 단일 권위 사상은 계승 | ADR-0010·0011이 대체 |
+| [[../ADR-0008-fixed-normalized-capture-frame|ADR-0008]] | 폐기 | ADR-0010이 대체 |
+| 코드 계약 | 이동 완료 | [[../../06-code/pivot-runtime|Pivot Runtime]] |
 
-## 본류 융화 절차
+항목별 채택·보류·폐기 판정표는 ADR-0010에 있다. 판정 근거는 사용자 승인과 브랜치 자동 검증이며, pointer lock 수동 플레이테스트는 승인 시점에 미완이었다.
 
-피벗을 `develop` 또는 `main`에 반영하기 전에 다음 순서를 따른다.
-
-1. 플레이테스트 결과로 각 피벗 항목을 `채택`, `보류`, `폐기`로 판정한다.
-2. 장르·핵심 동사·아키텍처처럼 기존 결정을 뒤집는 항목은 정식 ADR을 추가하고 supersede 관계를 명시한다.
-3. 채택된 현재 사실을 Concept, Game Rules, Architecture, Capture Pipeline과 새 분야별 원본에 직접 반영한다.
-4. 코드 계약과 실제 구현이 생긴 항목만 `06-code` 원본으로 이동한다.
-5. 이 문서의 표를 최종 이동 링크와 판정 결과로 갱신하고 상태를 `deprecated`로 바꾼다.
-6. 생성 인덱스와 로그는 `wiki_sync.py finalize`로 동기화한다.
-
-브랜치 전체를 한 번에 병합하기보다, `규칙 원본과 ADR → 순수 도메인 계약 → 이동 프로토타입 → 캡처·배치 → 전투·데모 맵` 순서로 검토 가능한 변경 단위를 만든다.
+보류로 남은 항목(보스, 데모 섬 콘텐츠, 구체 투사체 재사용)과 아래 미확정 질문은 여전히 유효하며 후속 작업에서 결정한다.
 
 ## 미확정 질문
 

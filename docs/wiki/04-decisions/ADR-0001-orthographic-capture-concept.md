@@ -1,13 +1,15 @@
 ---
 title: "ADR-0001: 직교 캡처 퍼즐 플랫포머 컨셉 채택"
 type: decision
-status: accepted
+status: deprecated
 tags: [concept, originality]
-updated: 2026-08-13
+updated: 2026-08-15
 summary: 원안 2D 캡처를 직교 3D 캡처 + 지형 속성으로 확장 채택한 이유와 대안.
 ---
 
 # ADR-0001: 직교 캡처 퍼즐 플랫포머 컨셉 채택
+
+> [[ADR-0010-pivot-to-third-person-capture-action|ADR-0010]]으로 대체됐다. 장르와 핵심 동사가 3인칭 지형 절취 액션으로 바뀌었다. 이 문서는 이력 보존용이다.
 
 ## 맥락
 제출작 코어 아이디어가 필요했다. 원안은 2D에서 고정 크기 사각형으로 지형을 캡처·복사·배치하는 플랫포머였으나 단독으로는 독창성이 약했다.

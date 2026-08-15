@@ -12,44 +12,46 @@ summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 
 > 생성 파일이다. 직접 편집하지 말고 `python tools/wiki_sync.py sync`를 실행한다.
 
-- 생성 시각: 2026-08-15T19:20:25+09:00
-- 원본 문서: 24개
+- 생성 시각: 2026-08-15T23:23:02+09:00
+- 원본 문서: 26개
 
 ## product
 
 | 문서 | 상태 | 태그 | 요약 | 갱신 |
 |---|---|---|---|---|
-| [[../01-product/concept|Concept and Judging Criteria]] | verified | concept, judging-criteria, hive | 게임 한 줄 컨셉, 세계관과 심사기준 5개 대응 전략의 원본. | 2026-08-13 |
+| [[../01-product/concept|Concept and Judging Criteria]] | verified | concept, judging-criteria, hive | 게임 한 줄 컨셉, 세계관과 심사기준 5개 대응 전략의 원본. | 2026-08-15 |
 
 ## design
 
 | 문서 | 상태 | 태그 | 요약 | 갱신 |
 |---|---|---|---|---|
 | [[../02-design/index|Design Index]] | verified | design-navigation, llm-context | 기획 원본 탐색 허브. 상세 규칙은 각 분야 원본에만 둔다. | 2026-08-13 |
-| [[../02-design/gameplay/game-rules|Game Rules]] | verified | rules, controls, level-design | 확정된 게임 규칙, 조작 스킴 v2와 레벨 커리큘럼의 원본. | 2026-08-14 |
+| [[../02-design/gameplay/game-rules|Game Rules]] | verified | rules, controls, level-design | 확정된 게임 규칙, 3인칭 조작 스킴과 절취·배치·와이어·전투 규칙의 원본. | 2026-08-15 |
 
 ## technology
 
 | 문서 | 상태 | 태그 | 요약 | 갱신 |
 |---|---|---|---|---|
-| [[../03-tech/architecture|Architecture]] | verified | architecture, determinism, module-boundary | 기술 스택, 폴백 가능한 모듈 경계와 결정론 규칙의 원본. | 2026-08-14 |
-| [[../03-tech/capture-pipeline|Capture Pipeline]] | verified | capture, geometry, silhouette | 캡처→스탬프→붙여넣기 알고리즘 스펙의 원본. | 2026-08-13 |
+| [[../03-tech/architecture|Architecture]] | verified | architecture, determinism, module-boundary | 기술 스택, 셀 지형 권위 모듈 경계와 결정론 규칙의 원본. | 2026-08-15 |
+| [[../03-tech/capture-pipeline|Capture Pipeline]] | verified | capture, cell-terrain, placement | 지형 절취 캡처와 배치 알고리즘 스펙의 원본. | 2026-08-15 |
 | [[../03-tech/proposals/develop-jaehyeok-implementation-design|develop-jaehyeok 피벗 구현 설계]] | draft | branch-pivot, implementation-design, voxel-terrain, third-person, deterministic-simulation | 3인칭 캡처 와이어 액션 피벗을 기존 본류 코드와 분리해 검증하기 위한 런타임 경계, 데이터 계약과 기술 선택. | 2026-08-15 |
 
 ## decision
 
 | 문서 | 상태 | 태그 | 요약 | 갱신 |
 |---|---|---|---|---|
-| [[../04-decisions/ADR-0001-orthographic-capture-concept|ADR-0001: 직교 캡처 퍼즐 플랫포머 컨셉 채택]] | accepted | concept, originality | 원안 2D 캡처를 직교 3D 캡처 + 지형 속성으로 확장 채택한 이유와 대안. | 2026-08-13 |
+| [[../04-decisions/ADR-0001-orthographic-capture-concept|ADR-0001: 직교 캡처 퍼즐 플랫포머 컨셉 채택]] | deprecated | concept, originality | 원안 2D 캡처를 직교 3D 캡처 + 지형 속성으로 확장 채택한 이유와 대안. | 2026-08-15 |
 | [[../04-decisions/ADR-0002-web-stack-vite-ts-three|ADR-0002: Vite + TypeScript + Three.js 스택]] | accepted | stack, web-build | 웹 빌드 제출 요건과 사람-AI 협업을 전제로 한 스택 선택 이유. | 2026-08-13 |
 | [[../04-decisions/ADR-0003-deterministic-fixed-timestep|ADR-0003: 결정론 고정 타임스텝 시뮬레이션]] | accepted | determinism, replay | 리플레이 기반 Hive 확장의 전제인 결정론을 첫 마일스톤부터 강제하는 이유. | 2026-08-13 |
-| [[../04-decisions/ADR-0004-fallback-core-architecture|ADR-0004: 폴백 가능한 코어 아키텍처]] | accepted | architecture, risk | 직교 캡처 리스크에 대비해 코어를 2D 스탬프 게임으로 정의하고 판정일을 두는 결정. | 2026-08-13 |
-| [[../04-decisions/ADR-0005-puzzle-rules-hybrid-and-snap|ADR-0005: 혼합형 퍼즐 + 붙여넣기 스냅 규칙]] | accepted | game-rules, level-design | 다해법 허용 + 최소 캡처 기록, 프레임 자유 + 붙여넣기 스냅을 택한 이유. | 2026-08-13 |
+| [[../04-decisions/ADR-0004-fallback-core-architecture|ADR-0004: 폴백 가능한 코어 아키텍처]] | deprecated | architecture, risk | 직교 캡처 리스크에 대비해 코어를 2D 스탬프 게임으로 정의하고 판정일을 두는 결정. | 2026-08-15 |
+| [[../04-decisions/ADR-0005-puzzle-rules-hybrid-and-snap|ADR-0005: 혼합형 퍼즐 + 붙여넣기 스냅 규칙]] | deprecated | game-rules, level-design | 다해법 허용 + 최소 캡처 기록, 프레임 자유 + 붙여넣기 스냅을 택한 이유. | 2026-08-15 |
 | [[../04-decisions/ADR-0006-adopt-flee-workflow|ADR-0006: project-flee 작업 체계 전면 채택]] | accepted | workflow, collaboration | 팀원의 검증된 협업 체계(위키·wiki_sync·TDD·Git Flow·dispatch)를 그대로 채택한 결정. | 2026-08-13 |
-| [[../04-decisions/ADR-0007-game-mode-fsm|ADR-0007: 게임 모드 FSM — core가 소유하고 render가 파생한다]] | accepted | game-mode, fsm, input, replay, determinism | 단일 GameMode FSM, 슬롯 기반 캡처, 조준을 리플레이에서 제외하는 이벤트 기록 방식을 정한 결정. | 2026-08-14 |
-| [[../04-decisions/ADR-0008-fixed-normalized-capture-frame|ADR-0008: 화면 비율 기반 고정 캡처 프레임]] | accepted | capture, frame, normalized-coordinates, prototype | 프로토타입 캡처 프레임을 뷰포트 너비 30%, 높이 40%로 고정하고 화면 정규화 좌표로 표현하는 결정. | 2026-08-14 |
+| [[../04-decisions/ADR-0007-game-mode-fsm|ADR-0007: 게임 모드 FSM — core가 소유하고 render가 파생한다]] | deprecated | game-mode, fsm, input, replay, determinism | 단일 GameMode FSM, 슬롯 기반 캡처, 조준을 리플레이에서 제외하는 이벤트 기록 방식을 정한 결정. | 2026-08-15 |
+| [[../04-decisions/ADR-0008-fixed-normalized-capture-frame|ADR-0008: 화면 비율 기반 고정 캡처 프레임]] | deprecated | capture, frame, normalized-coordinates, prototype | 프로토타입 캡처 프레임을 뷰포트 너비 30%, 높이 40%로 고정하고 화면 정규화 좌표로 표현하는 결정. | 2026-08-15 |
 | [[../04-decisions/ADR-0009-wire-reel-launch|ADR-0009: 와이어 탭 회수와 탄도 역산 발사]] | accepted | wire-action, pivot-runtime, input-design, movement | 와이어 회수 비행을 짧은 탭 해제와 매달린 상태의 점프로 발동하고, 가속도 튜닝 대신 앵커 상단을 향한 탄도 역산으로 초기 속도를 구하는 결정. | 2026-08-15 |
-| [[../04-decisions/proposals/develop-jaehyeok-pivot|develop-jaehyeok 피벗 제안: 3인칭 캡처 와이어 액션]] | draft | branch-pivot, third-person-shooter, terrain-capture, wire-action, demo-scope | develop-jaehyeok 브랜치에서 3인칭 슈터·지형 절취 캡처·와이어 이동·공중 배치를 검증하고 추후 본류 설계로 선택 병합하기 위한 피벗 원본. | 2026-08-15 |
+| [[../04-decisions/ADR-0010-pivot-to-third-person-capture-action|ADR-0010: 3인칭 캡처 와이어 액션으로 제품 피벗]] | accepted | product-pivot, third-person-action, terrain-capture, core-verb | 장르와 핵심 동사를 직교 실루엣 퍼즐 플랫포머에서 3인칭 지형 절취 액션으로 바꾸고 ADR-0001·0005·0007·0008을 대체하는 결정. | 2026-08-15 |
+| [[../04-decisions/ADR-0011-cell-terrain-authority-architecture|ADR-0011: 셀 지형 권위 아키텍처]] | accepted | architecture, cell-terrain, determinism, module-boundary | 0.5m 셀 지형 배열을 시뮬레이션 권위 원본으로 두고 2D 스탬프 폴백 코어를 대체하는 결정. | 2026-08-15 |
+| [[../04-decisions/proposals/develop-jaehyeok-pivot|develop-jaehyeok 피벗 제안: 3인칭 캡처 와이어 액션]] | deprecated | branch-pivot, third-person-shooter, terrain-capture, wire-action, demo-scope | develop-jaehyeok 브랜치에서 3인칭 슈터·지형 절취 캡처·와이어 이동·공중 배치를 검증하고 추후 본류 설계로 선택 병합하기 위한 피벗 원본. | 2026-08-15 |
 
 ## progress
 

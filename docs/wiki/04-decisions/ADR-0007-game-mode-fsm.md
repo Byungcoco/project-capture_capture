@@ -1,13 +1,15 @@
 ---
 title: "ADR-0007: 게임 모드 FSM — core가 소유하고 render가 파생한다"
 type: decision
-status: accepted
+status: deprecated
 tags: [game-mode, fsm, input, replay, determinism]
-updated: 2026-08-14
+updated: 2026-08-15
 summary: 단일 GameMode FSM, 슬롯 기반 캡처, 조준을 리플레이에서 제외하는 이벤트 기록 방식을 정한 결정.
 ---
 
 # ADR-0007: 게임 모드 FSM — core가 소유하고 render가 파생한다
+
+> [[ADR-0010-pivot-to-third-person-capture-action|ADR-0010]]과 [[ADR-0011-cell-terrain-authority-architecture|ADR-0011]]로 대체됐다. 모드와 시간 정지가 사라져 GameMode FSM 자체가 없다. "진실의 원본을 하나로 둔다"와 "코스메틱은 파생으로 둔다"는 사상은 셀 지형 권위 구조에 그대로 이어졌다. 이 문서는 이력 보존용이다.
 
 ## 맥락
 
