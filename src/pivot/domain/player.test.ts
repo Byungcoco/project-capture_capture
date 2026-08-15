@@ -140,6 +140,114 @@ describe('피벗 플레이어', () => {
     expect(occluded.wire).toBeNull()
   })
 
+  it('정확한 direct wireable hit는 cone과 overhead 후보보다 우선한다', () => {
+    const direct = collider({ x: 5, y: 1.5, z: 0 }, { x: 0.5, y: 0.5, z: 0.5 })
+    const cone = collider({ x: 8, y: 1.5, z: 0.8 }, { x: 0.25, y: 0.25, z: 0.25 })
+    const overhead = collider({ x: 0, y: 6, z: 0 }, { x: 0.5, y: 0.5, z: 0.5 })
+
+    const player = pressWire(createAabbCollisionWorld([overhead, cone, direct]), { x: 1, y: 0, z: 0 })
+
+    expect(player.wire?.anchor).toEqual({ x: 4.5, y: 1.5, z: 0 })
+  })
+
+  it('direct miss는 8도 cone 안의 최소 각도 표면에 붙고 8도 밖과 뒤에는 붙지 않는다', () => {
+    const lessAligned = collider(
+      { x: 6, y: 1.5, z: 0.7 },
+      { x: 0.25, y: 0.25, z: 0.25 },
+    )
+    const moreAligned = collider(
+      { x: 10, y: 1.5, z: 0.5 },
+      { x: 0.25, y: 0.25, z: 0.25 },
+    )
+    const assisted = pressWire(
+      createAabbCollisionWorld([lessAligned, moreAligned]),
+      { x: 1, y: 0, z: 0 },
+    )
+    const outsideCone = pressWire(
+      createAabbCollisionWorld([
+        collider({ x: 8, y: 1.5, z: 1.5 }, { x: 0.25, y: 0.25, z: 0.25 }),
+        collider({ x: -3, y: 1.5, z: 0 }, { x: 0.25, y: 0.25, z: 0.25 }),
+      ]),
+      { x: 1, y: 0, z: 0 },
+    )
+
+    expect(assisted.wire).not.toBeNull()
+    expect(assisted.wire?.anchor.x).toBeGreaterThan(9)
+    expect(assisted.wire?.ropeLength).toBeCloseTo(
+      distance(playerWireOrigin(createPlayerState().position), assisted.wire?.anchor ?? { x: 0, y: 0, z: 0 }),
+      10,
+    )
+    expect(outsideCone.wire).toBeNull()
+  })
+
+  it('overhead는 aim 반대여도 5m 수평 12m 1m 높이 안에서 정렬하고 경계 밖은 거부한다', () => {
+    const fartherHorizontal = collider(
+      { x: 3, y: 6, z: 0 },
+      { x: 0.5, y: 0.5, z: 0.5 },
+    )
+    const nearerHorizontal = collider(
+      { x: -2, y: 7, z: 0 },
+      { x: 0.5, y: 0.5, z: 0.5 },
+    )
+    const assisted = pressWire(
+      createAabbCollisionWorld([fartherHorizontal, nearerHorizontal]),
+      { x: 0, y: 0, z: -1 },
+    )
+    const invalid = pressWire(
+      createAabbCollisionWorld([
+        collider({ x: 5.6, y: 6, z: 0 }, { x: 0.5, y: 0.5, z: 0.5 }),
+        collider({ x: 0, y: 14.5, z: 0 }, { x: 0.5, y: 0.5, z: 0.5 }),
+        collider({ x: 0, y: 2.4, z: 0 }, { x: 0.5, y: 0.5, z: 0.5 }),
+        collider({ x: 0, y: 0, z: 0 }, { x: 0.5, y: 0.5, z: 0.5 }),
+      ]),
+      { x: 0, y: 0, z: -1 },
+    )
+
+    expect(assisted.wire).not.toBeNull()
+    expect(assisted.wire?.anchor.x).toBeLessThan(0)
+    expect(invalid.wire).toBeNull()
+  })
+
+  it('non-wireable 앞 장애물이 cone과 overhead anchor를 가리면 assist하지 않는다', () => {
+    const coneBlocked = pressWire(
+      createAabbCollisionWorld([
+        collider({ x: 4, y: 1.5, z: 0.4 }, { x: 0.5, y: 1, z: 0.5 }, false),
+        collider({ x: 8, y: 1.5, z: 0.8 }, { x: 0.5, y: 0.5, z: 0.5 }),
+      ]),
+      { x: 1, y: 0, z: 0 },
+    )
+    const overheadBlocked = pressWire(
+      createAabbCollisionWorld([
+        collider({ x: 0, y: 4, z: 0 }, { x: 1, y: 0.5, z: 1 }, false),
+        collider({ x: 0, y: 7, z: 0 }, { x: 0.5, y: 0.5, z: 0.5 }),
+      ]),
+      { x: 1, y: 0, z: 0 },
+    )
+
+    expect(coneBlocked.wire).toBeNull()
+    expect(overheadBlocked.wire).toBeNull()
+  })
+
+  it('동률 cone과 overhead 후보는 collider 입력 순서와 무관하게 같은 anchor를 고른다', () => {
+    const upper = collider({ x: 8, y: 1.5, z: 1 }, { x: 0.25, y: 0.25, z: 0.25 })
+    const lower = collider({ x: 8, y: 1.5, z: -1 }, { x: 0.25, y: 0.25, z: 0.25 })
+    const firstCone = pressWire(createAabbCollisionWorld([upper, lower]), { x: 1, y: 0, z: 0 })
+    const secondCone = pressWire(createAabbCollisionWorld([lower, upper]), { x: 1, y: 0, z: 0 })
+    const left = collider({ x: -3, y: 7, z: 0 }, { x: 0.5, y: 0.5, z: 0.5 })
+    const right = collider({ x: 3, y: 7, z: 0 }, { x: 0.5, y: 0.5, z: 0.5 })
+    const firstOverhead = pressWire(createAabbCollisionWorld([right, left]), { x: 0, y: 0, z: -1 })
+    const secondOverhead = pressWire(createAabbCollisionWorld([left, right]), { x: 0, y: 0, z: -1 })
+
+    expect(firstCone.wire).not.toBeNull()
+    expect(secondCone.wire).not.toBeNull()
+    expect(firstCone.wire?.anchor).toEqual(secondCone.wire?.anchor)
+    expect(firstCone.wire?.anchor.z).toBeLessThan(0)
+    expect(firstOverhead.wire).not.toBeNull()
+    expect(secondOverhead.wire).not.toBeNull()
+    expect(firstOverhead.wire?.anchor).toEqual(secondOverhead.wire?.anchor)
+    expect(firstOverhead.wire?.anchor.x).toBeLessThan(0)
+  })
+
   it('와이어 해제 후 속도를 보존하되 초속 30으로 제한한다', () => {
     const released = stepPlayer(
       createPlayerState({
@@ -628,6 +736,23 @@ function queryWorld(hit: CollisionRayHit | null, ranges?: number[]): CollisionWo
       return hit
     },
   }
+}
+
+function collider(
+  center: Vec3,
+  halfSize: Vec3,
+  wireable = true,
+): StaticCollider {
+  return { center, halfSize, wireable }
+}
+
+function pressWire(world: CollisionWorld, wireAimDirection: Vec3): PlayerState {
+  return stepPlayer(
+    createPlayerState(),
+    { ...IDLE_PLAYER_COMMAND, wireAimDirection, wireEdges: ['press'] },
+    world,
+    STEP_SECONDS,
+  )
 }
 
 function distance(first: Vec3, second: Vec3): number {

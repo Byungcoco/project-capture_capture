@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { CELL_SIZE, TerrainValidationError, worldToCellIndex } from './cell-world'
+import {
+  CELL_SIZE,
+  TerrainValidationError,
+  createCellCollisionWorld,
+  worldToCellIndex,
+} from './cell-world'
 import type { CellIndex, TerrainCell } from './cell-world'
 import { captureCells } from './capture'
+import { IDLE_PLAYER_COMMAND } from './commands'
+import { createPlayerState, stepPlayer } from './player'
 import { createPivotSession } from './session'
 
 describe('sparse 셀 월드', () => {
@@ -53,6 +60,26 @@ describe('sparse 셀 월드', () => {
         },
       },
     )).toThrowError(TerrainValidationError)
+  })
+
+  it('cell terrain도 legacy AABB와 같은 8도 wire assist 계약을 제공한다', () => {
+    const terrain = [terrainCell(
+      { x: 15, y: 2, z: 1 },
+      { wireable: true },
+    )]
+    const player = stepPlayer(
+      createPlayerState(),
+      {
+        ...IDLE_PLAYER_COMMAND,
+        wireAimDirection: { x: 1, y: 0, z: 0 },
+        wireEdges: ['press'],
+      },
+      createCellCollisionWorld(terrain),
+      1 / 60,
+    )
+
+    expect(player.wire).not.toBeNull()
+    expect(player.wire?.anchor.z).toBeGreaterThan(0)
   })
 })
 
