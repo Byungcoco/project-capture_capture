@@ -67,6 +67,34 @@ describe('AABB wire assist query', () => {
     expect(angle).toBeCloseTo(7.4, 1)
   })
 
+  it('30m sphere와 교차하는 AABB face 내부의 실제 7.277도 가시 표면을 선택한다', () => {
+    const player = createPlayerState({ grounded: false })
+    const world = createAabbCollisionWorld([{
+      center: { x: -3.9, y: 1.5, z: -25 },
+      halfSize: { x: 0.1, y: 5, z: 8 },
+      wireable: true,
+    }])
+    const next = stepPlayer(
+      player,
+      { ...IDLE_PLAYER_COMMAND, wireAimDirection: { x: 0, y: 0, z: -1 }, wireEdges: ['press'] },
+      world,
+      1 / 60,
+    )
+    const origin = playerWireOrigin(player.position)
+    const anchor = next.wire?.anchor
+
+    expect(anchor).toBeDefined()
+    const offset = anchor === undefined
+      ? { x: 0, y: 0, z: 0 }
+      : { x: anchor.x - origin.x, y: anchor.y - origin.y, z: anchor.z - origin.z }
+    const distance = Math.hypot(offset.x, offset.y, offset.z)
+    const angle = Math.acos(-offset.z / distance) * 180 / Math.PI
+    expect(distance).toBeCloseTo(30, 8)
+    expect(angle).toBeCloseTo(7.277, 2)
+    expect(anchor?.x).toBeCloseTo(-3.8, 8)
+    expect(anchor?.y).toBeCloseTo(1.5, 8)
+  })
+
   it('동거리 mixed-wireable ray는 collider 순서와 무관하게 non-wireable 차폐를 우선한다', () => {
     const wireable: StaticCollider = {
       center: { x: 0, y: 1.5, z: -5 },

@@ -248,6 +248,53 @@ describe('피벗 플레이어', () => {
     expect(firstOverhead.wire?.anchor.x).toBeLessThan(0)
   })
 
+  it('정렬 상위 32개가 차폐되어도 33번째 가시 cone 후보에 연결한다', () => {
+    const origin = playerWireOrigin(createPlayerState().position)
+    const candidates = Array.from({ length: 33 }, (_, index) => {
+      const angle = (index + 1) * 0.1 * Math.PI / 180
+      return {
+        point: {
+          x: Math.sin(angle) * 10,
+          y: origin.y,
+          z: -Math.cos(angle) * 10,
+        },
+        wireable: true,
+      }
+    })
+    let raycastCalls = 0
+    const world: CollisionWorld = {
+      ...integratingWorld(),
+      queryWireCandidates: () => candidates,
+      raycast(rayOrigin, direction) {
+        raycastCalls += 1
+        const length = lengthVec3(direction)
+        const normalized = {
+          x: direction.x / length,
+          y: direction.y / length,
+          z: direction.z / length,
+        }
+        const angle = Math.atan2(normalized.x, -normalized.z) * 180 / Math.PI
+        if (Math.abs(angle) < 1e-8) return null
+        const visible = angle > 3.25
+        const distance = visible ? 10 : 5
+        return {
+          point: {
+            x: rayOrigin.x + normalized.x * distance,
+            y: rayOrigin.y + normalized.y * distance,
+            z: rayOrigin.z + normalized.z * distance,
+          },
+          distance,
+          wireable: visible,
+        }
+      },
+    }
+
+    const player = pressWire(world, { x: 0, y: 0, z: -1 })
+
+    expect(player.wire?.anchor).toEqual(candidates[32]?.point)
+    expect(raycastCalls).toBe(34)
+  })
+
   it('와이어 해제 후 속도를 보존하되 초속 30으로 제한한다', () => {
     const released = stepPlayer(
       createPlayerState({
