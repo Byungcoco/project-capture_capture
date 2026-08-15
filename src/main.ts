@@ -7,7 +7,7 @@ import { createBrowserInput } from './pivot/browser/browser-input'
 import { createPivotHud } from './pivot/browser/hud'
 import { createPivotScene } from './pivot/browser/three-scene'
 import { createPageHideHandler } from './pivot/browser/scene-lifecycle'
-import { MOVEMENT_SPAWN, MOVEMENT_TERRAIN } from './pivot/demo/movement-course'
+import { MOVEMENT_ENEMIES, MOVEMENT_SPAWN, MOVEMENT_TERRAIN } from './pivot/demo/movement-course'
 import { previewCapture } from './pivot/domain/capture'
 import { previewPlacement } from './pivot/domain/placement'
 import { WIRE_RANGE, createPlayerState, playerWireOrigin } from './pivot/domain/player'
@@ -26,6 +26,7 @@ let accumulatorSeconds = 0
 function createSession() {
   return createPivotSession({
     terrain: MOVEMENT_TERRAIN,
+    enemies: MOVEMENT_ENEMIES,
     player: createPlayerState({ position: { ...MOVEMENT_SPAWN } }),
   })
 }

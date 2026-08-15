@@ -2,18 +2,52 @@ import type { Vec3 } from '../domain/math'
 import type { StaticCollider } from '../domain/player'
 import { CELL_SIZE, sortTerrainCells } from '../domain/cell-world'
 import type { TerrainCell, TerrainMaterial } from '../domain/cell-world'
+import { ENEMY_HALF_SIZE, ENEMY_MAX_HP } from '../domain/combat'
+import type { EnemyState } from '../domain/combat'
 
 export const MOVEMENT_SPAWN: Readonly<Vec3> = { x: 0, y: 0.9, z: 8 }
 
+export const COMBAT_PLATFORM_CENTERS: readonly Readonly<Vec3>[] = Object.freeze([
+  Object.freeze({ x: 5.25, y: 4, z: -9.75 }),
+  Object.freeze({ x: -6.75, y: 10, z: -23.75 }),
+  Object.freeze({ x: 9.25, y: 17, z: -39.75 }),
+  Object.freeze({ x: -5.75, y: 25, z: -57.75 }),
+])
+
+const COMBAT_PLATFORM_HALF_SIZES: readonly Readonly<Vec3>[] = [
+  { x: 2.75, y: 0.5, z: 3.25 },
+  { x: 2.75, y: 0.5, z: 3.25 },
+  { x: 2.75, y: 0.5, z: 3.25 },
+  { x: 1.75, y: 0.5, z: 4.25 },
+]
+
 const COURSE_BOXES: readonly CourseBox[] = [
   box({ x: 0, y: -0.5, z: 6 }, { x: 5, y: 0.5, z: 5 }, false, 'soil'),
-  box({ x: 0, y: 0.5, z: -3 }, { x: 4, y: 0.5, z: 3 }, false, 'rock'),
-  box({ x: 5.5, y: 2.5, z: -9 }, { x: 3, y: 0.5, z: 3 }, true, 'rock'),
-  box({ x: -4.5, y: 5, z: -15 }, { x: 3, y: 0.5, z: 3 }, true, 'rock'),
-  box({ x: 0, y: 1.5, z: 0 }, { x: 0.5, y: 1.5, z: 3 }, false, 'wood'),
-  box({ x: 4.5, y: 6.5, z: -10 }, { x: 0.5, y: 0.5, z: 0.5 }, true, 'rock'),
-  box({ x: -3.5, y: 9, z: -16 }, { x: 0.5, y: 0.5, z: 0.5 }, true, 'rock'),
+  ...COMBAT_PLATFORM_CENTERS.map((center, index) => (
+    box(
+      { ...center },
+      { ...(COMBAT_PLATFORM_HALF_SIZES[index] ?? { x: 2.75, y: 0.5, z: 3.25 }) },
+      true,
+      'rock',
+    )
+  )),
 ]
+
+export const MOVEMENT_ENEMIES: readonly EnemyState[] = Object.freeze(
+  COMBAT_PLATFORM_CENTERS.map((platform, index) => Object.freeze({
+    id: `enemy-${String(index + 1).padStart(2, '0')}`,
+    position: Object.freeze({
+      x: platform.x,
+      y: platform.y + 1.25,
+      z: platform.z,
+    }),
+    halfSize: ENEMY_HALF_SIZE,
+    hp: ENEMY_MAX_HP,
+    maxHp: ENEMY_MAX_HP,
+    nextShotTick: 30 + index * 35,
+    alive: true,
+  })),
+)
 
 export const MOVEMENT_COURSE: readonly StaticCollider[] = COURSE_BOXES.map((courseBox) => ({
   center: { ...courseBox.center },

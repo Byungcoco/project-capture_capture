@@ -1,6 +1,14 @@
 import type { GameSnapshot } from '../domain/session'
 import type { PlacementPreview } from '../domain/placement'
 
+export const COMBAT_CONTROL_LABEL = 'LMB FIRE'
+
+export function combatStatusText(
+  snapshot: Pick<GameSnapshot, 'playerHp' | 'enemies'>,
+): string {
+  return `HP ${snapshot.playerHp} · ENEMY ${snapshot.enemies.filter(({ alive }) => alive).length}`
+}
+
 export function placementFailureLabel(preview: PlacementPreview | null): string | null {
   return preview?.valid === false ? preview.failureCode : null
 }
@@ -18,7 +26,7 @@ export function createPivotHud(root: HTMLElement): PivotHud {
   hud.className = 'pivot-hud'
   hud.innerHTML = `
     <div class="pivot-hud__title">PIVOT PROTOTYPE</div>
-    <div class="pivot-hud__controls">클릭 시점 고정 · WASD 이동 · Space 더블 점프 · Shift 대시 · E 와이어 · Q 홀드/릴리스 배치 · 오른쪽 클릭 캡처</div>
+    <div class="pivot-hud__controls">클릭 시점 고정 · WASD 이동 · Space 더블 점프 · Shift 대시 · E 와이어 · Q 홀드/릴리스 배치 · LMB FIRE · 오른쪽 클릭 캡처</div>
     <div class="pivot-hud__status" aria-live="polite"></div>
     <div class="pivot-reticle" aria-hidden="true"></div>
   `
@@ -36,7 +44,7 @@ export function createPivotHud(root: HTMLElement): PivotHud {
       const placementStatus = placementPreview === null
         ? ''
         : placementFailure === null ? ' · PLACE READY' : ` · PLACE ${placementFailure}`
-      status.textContent = `${pointerLocked ? 'LOCKED' : 'CLICK TO LOCK'} · ${ability} · JUMP ${player.airJumpsRemaining} · STACK ${snapshot.captureStack.length}/5${placementStatus}`
+      status.textContent = `${pointerLocked ? 'LOCKED' : 'CLICK TO LOCK'} · ${combatStatusText(snapshot)} · ${ability} · JUMP ${player.airJumpsRemaining} · STACK ${snapshot.captureStack.length}/5${placementStatus}`
     },
   }
 }

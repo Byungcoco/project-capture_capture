@@ -14,8 +14,10 @@ import { placeChunk } from './placement'
 import { solveCameraAim } from './aim'
 import { WIRE_RANGE, createPlayerState, playerWireOrigin, stepPlayer } from './player'
 import type { PlayerState, StaticCollider } from './player'
+import { createCombatState, freezeCombatState, stepCombat } from './combat'
+import type { CombatState, EnemyState, ProjectileState } from './combat'
 
-export interface WorldState {
+export interface WorldState extends CombatState {
   tick: number
   player: PlayerState
   colliders: readonly StaticCollider[]
@@ -29,6 +31,10 @@ export interface GameSnapshot {
   colliders: readonly StaticCollider[]
   terrain: readonly TerrainCell[]
   captureStack: readonly CapturedChunk[]
+  playerHp: number
+  playerMaxHp: number
+  enemies: readonly EnemyState[]
+  projectiles: readonly ProjectileState[]
 }
 
 export interface PivotSession {
@@ -41,6 +47,9 @@ export interface PivotSession {
 
 interface PivotSessionBaseOptions {
   player?: PlayerState
+  playerHp?: number
+  enemies?: readonly EnemyState[]
+  projectiles?: readonly ProjectileState[]
 }
 
 export interface TerrainPivotSessionOptions extends PivotSessionBaseOptions {
@@ -79,12 +88,14 @@ export function createPivotSession(
   assertValidCaptureStack(options.captureStack ?? [])
   const terrain = freezeTerrain(terrainOption ?? [])
   const captureStack = freezeCaptureStack(options.captureStack ?? [])
+  const combat = createCombatState(options.enemies, options.projectiles, options.playerHp)
   const state: WorldState = {
     tick: 0,
     player: structuredClone(options.player ?? createPlayerState()),
     colliders: authorityColliders,
     terrain,
     captureStack,
+    ...combat,
   }
   return {
     state,
@@ -166,6 +177,14 @@ export function stepPivotSession(
     tick,
     terrain,
     captureStack,
+    ...stepCombat(session.state, {
+      tick,
+      command,
+      playerPosition: session.state.player.position,
+      playerHalfSize: session.state.player.halfSize,
+      world,
+      stepSeconds: TICK_SECONDS,
+    }),
     player: stepPlayer(session.state.player, playerCommand, world, TICK_SECONDS),
   }
   return {
@@ -190,12 +209,17 @@ function toSnapshot(
   state: WorldState,
   snapshotColliders: readonly StaticCollider[],
 ): GameSnapshot {
+  const combat = freezeCombatState(state)
   return {
     tick: state.tick,
     player: structuredClone(state.player),
     colliders: snapshotColliders,
     terrain: state.terrain,
     captureStack: state.captureStack,
+    playerHp: combat.playerHp,
+    playerMaxHp: combat.playerMaxHp,
+    enemies: combat.enemies,
+    projectiles: combat.projectiles,
   }
 }
 

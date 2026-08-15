@@ -15,6 +15,9 @@ import { createSceneDispose } from './scene-lifecycle'
 const PLAYER_COLOR = 0xffd166
 const TERRAIN_COLOR = 0x29465b
 const WIREABLE_COLOR = 0x32d9c6
+const ENEMY_COLOR = 0xd63c3c
+const PLAYER_PROJECTILE_COLOR = 0xffe066
+const ENEMY_PROJECTILE_COLOR = 0xff6b35
 const MATERIAL_COLORS: Record<TerrainMaterial, number> = {
   soil: 0x6e5036,
   rock: TERRAIN_COLOR,
@@ -67,6 +70,69 @@ export function updateWireLine(
   geometry.computeBoundingSphere()
 }
 
+export function syncCombatMeshes(
+  scene: THREE.Scene,
+  meshes: THREE.Object3D[],
+  snapshot: Pick<GameSnapshot, 'enemies' | 'projectiles'>,
+): void {
+  disposeCombatMeshes(scene, meshes)
+  for (const enemy of snapshot.enemies) {
+    if (!enemy.alive) continue
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        enemy.halfSize?.x === undefined ? 1.1 : enemy.halfSize.x * 2,
+        enemy.halfSize?.y === undefined ? 1.5 : enemy.halfSize.y * 2,
+        enemy.halfSize?.z === undefined ? 1.1 : enemy.halfSize.z * 2,
+      ),
+      new THREE.MeshStandardMaterial({ color: ENEMY_COLOR, roughness: 0.58 }),
+    )
+    body.position.set(enemy.position.x, enemy.position.y, enemy.position.z)
+    body.castShadow = true
+    const eyeGeometry = new THREE.BoxGeometry(0.12, 0.12, 0.04)
+    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xfff4d6 })
+    for (const x of [-0.2, 0.2]) {
+      const eye = new THREE.Mesh(eyeGeometry, eyeMaterial)
+      eye.position.set(x, 0.18, -((enemy.halfSize?.z ?? 0.55) + 0.025))
+      body.add(eye)
+    }
+    scene.add(body)
+    meshes.push(body)
+  }
+  for (const projectile of snapshot.projectiles) {
+    const mesh = new THREE.Mesh(
+      new THREE.SphereGeometry(projectile.radius, 8, 6),
+      new THREE.MeshStandardMaterial({
+        color: projectile.owner === 'player'
+          ? PLAYER_PROJECTILE_COLOR
+          : ENEMY_PROJECTILE_COLOR,
+        emissive: projectile.owner === 'player' ? 0x554400 : 0x551600,
+      }),
+    )
+    mesh.position.set(projectile.position.x, projectile.position.y, projectile.position.z)
+    scene.add(mesh)
+    meshes.push(mesh)
+  }
+}
+
+export function disposeCombatMeshes(scene: THREE.Scene, meshes: THREE.Object3D[]): void {
+  const geometries = new Set<THREE.BufferGeometry>()
+  const materials = new Set<THREE.Material>()
+  for (const object of meshes.splice(0)) {
+    scene.remove(object)
+    object.traverse((entry) => {
+      if (!(entry instanceof THREE.Mesh)) return
+      geometries.add(entry.geometry)
+      if (Array.isArray(entry.material)) {
+        for (const material of entry.material) materials.add(material)
+      } else {
+        materials.add(entry.material)
+      }
+    })
+  }
+  for (const geometry of geometries) geometry.dispose()
+  for (const material of materials) material.dispose()
+}
+
 export interface PivotScene {
   canvas: HTMLCanvasElement
   getCameraRay(snapshot: GameSnapshot, view: BrowserInputState): Ray3
@@ -101,6 +167,7 @@ export function createPivotScene(root: HTMLElement): PivotScene {
   const terrainMeshLifecycle = createTerrainMeshLifecycle<THREE.InstancedMesh>()
   const cameraCollisionMeshes: THREE.InstancedMesh[] = []
   let renderedTerrain: readonly TerrainCell[] | null = null
+  const combatMeshes: THREE.Object3D[] = []
 
   const previewCube = new THREE.Mesh(
     new THREE.BoxGeometry(CAPTURE_CUBE_SIZE, CAPTURE_CUBE_SIZE, CAPTURE_CUBE_SIZE),
@@ -262,6 +329,7 @@ export function createPivotScene(root: HTMLElement): PivotScene {
     disposeMaterial(player.material)
     wireGeometry.dispose()
     disposeMaterial(wire.material)
+    disposeCombatMeshes(scene, combatMeshes)
     renderer.dispose()
   })
 
@@ -289,6 +357,7 @@ export function createPivotScene(root: HTMLElement): PivotScene {
       const { position } = snapshot.player
       player.position.set(position.x, position.y, position.z)
       updateWireLine(wire, position, snapshot.player.wire)
+      syncCombatMeshes(scene, combatMeshes, snapshot)
       updatePreview(previewCube, previewCells, capturePreview, placementPreview)
       renderer.render(scene, camera)
     },

@@ -19,6 +19,7 @@ export interface BrowserInputState {
   jumpQueued: boolean
   dashQueued: boolean
   captureQueued: boolean
+  shootQueued: boolean
   placeHeld: boolean
   placeReleaseCount: number
   wireEdgeQueue: readonly WireEdge[]
@@ -37,7 +38,7 @@ export interface BrowserInput {
 export function createBrowserInputState(): BrowserInputState {
   return {
     pressedCodes: new Set(), yaw: 0, pitch: 0, pointerLocked: false,
-    jumpQueued: false, dashQueued: false, captureQueued: false,
+    jumpQueued: false, dashQueued: false, captureQueued: false, shootQueued: false,
     placeHeld: false, placeReleaseCount: 0,
     wireEdgeQueue: [],
   }
@@ -63,9 +64,10 @@ export function reduceBrowserInput(state: BrowserInputState, _event: BrowserInpu
     }
   }
   if (event.type === 'mouse-down') {
-    return event.button === 2 && state.pointerLocked
-      ? { ...state, captureQueued: true }
-      : state
+    if (!state.pointerLocked) return state
+    if (event.button === 0) return { ...state, shootQueued: true }
+    if (event.button === 2) return { ...state, captureQueued: true }
+    return state
   }
 
   const pressedCodes = new Set(state.pressedCodes)
@@ -108,6 +110,7 @@ export function sampleBrowserInput(
       jumpQueued: false,
       dashQueued: false,
       captureQueued: false,
+      shootQueued: false,
       placeReleaseCount: Math.max(0, state.placeReleaseCount - 1),
       wireEdgeQueue: [],
     },
@@ -121,6 +124,7 @@ export function sampleBrowserInput(
       dashPressed: state.dashQueued,
       wireEdges: state.wireEdgeQueue,
       capturePressed: state.captureQueued,
+      shootPressed: state.shootQueued,
       placeHeld: state.placeHeld,
       placeReleased: state.placeReleaseCount > 0,
       ...(captureRay === undefined ? {} : {
@@ -129,6 +133,8 @@ export function sampleBrowserInput(
         captureBasis: captureRay.basis,
         placementOrigin: captureRay.origin,
         placementDirection: captureRay.direction,
+        shootOrigin: captureRay.origin,
+        shootDirection: captureRay.direction,
       }),
     },
   }
@@ -158,8 +164,8 @@ export function createBrowserInput(canvas: HTMLCanvasElement): BrowserInput {
     })
   })
   window.addEventListener('mousedown', (event) => {
-    if (event.button !== 2) return
-    event.preventDefault()
+    if (event.button !== 0 && event.button !== 2) return
+    if (event.button === 2) event.preventDefault()
     if (state.pointerLocked) {
       state = reduceBrowserInput(state, { type: 'mouse-down', button: event.button })
     }
@@ -190,6 +196,7 @@ function clearTransientState(state: BrowserInputState): BrowserInputState {
     jumpQueued: false,
     dashQueued: false,
     captureQueued: false,
+    shootQueued: false,
     placeHeld: false,
     placeReleaseCount: 0,
     wireEdgeQueue: [...state.wireEdgeQueue, 'release'],

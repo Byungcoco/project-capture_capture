@@ -15,6 +15,9 @@ export interface PlayerCommand {
   wireAimDirection: Vec3
   jumpPressed: boolean
   dashPressed: boolean
+  shootPressed: boolean
+  shootOrigin: Vec3
+  shootDirection: Vec3
   wireEdges: readonly WireEdge[]
   capturePressed: boolean
   captureOrigin: Vec3
@@ -33,6 +36,9 @@ export const IDLE_PLAYER_COMMAND: PlayerCommand = {
   wireAimDirection: { x: 0, y: 0, z: -1 },
   jumpPressed: false,
   dashPressed: false,
+  shootPressed: false,
+  shootOrigin: { x: 0, y: 0, z: 0 },
+  shootDirection: { x: 0, y: 0, z: -1 },
   wireEdges: [],
   capturePressed: false,
   captureOrigin: { x: 0, y: 0, z: 0 },
