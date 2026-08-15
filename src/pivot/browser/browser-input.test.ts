@@ -128,4 +128,21 @@ describe('피벗 브라우저 입력 adapter', () => {
       expect(sample.command.placeReleased).toBe(false)
     }
   })
+
+  it('sample 전 서로 다른 Q release cycle은 tick마다 하나씩 보존한다', () => {
+    let state = createBrowserInputState()
+    state = reduceBrowserInput(state, { type: 'pointer-lock', locked: true })
+    for (let cycle = 0; cycle < 2; cycle += 1) {
+      state = reduceBrowserInput(state, { type: 'key-down', code: 'KeyQ', repeat: false })
+      state = reduceBrowserInput(state, { type: 'key-up', code: 'KeyQ' })
+    }
+
+    const first = sampleBrowserInput(state, FORWARD, FORWARD)
+    const second = sampleBrowserInput(first.state, FORWARD, FORWARD)
+    const third = sampleBrowserInput(second.state, FORWARD, FORWARD)
+
+    expect(first.command.placeReleased).toBe(true)
+    expect(second.command.placeReleased).toBe(true)
+    expect(third.command.placeReleased).toBe(false)
+  })
 })

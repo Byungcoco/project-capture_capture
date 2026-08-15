@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import * as THREE from 'three'
 
 import type { CapturePreview } from '../domain/capture'
 import type { PlacementPreview } from '../domain/placement'
@@ -8,6 +9,7 @@ import {
   placementPreviewCellCount,
   terrainNeedsSync,
 } from './three-scene'
+import * as threeScene from './three-scene'
 
 describe('피벗 terrain renderer cache', () => {
   it('같은 frozen terrain 참조는 renderer 재동기화를 요구하지 않는다', () => {
@@ -77,5 +79,47 @@ describe('피벗 terrain renderer cache', () => {
     expect(placementPreviewCellCount(valid)).toBe(1)
     expect(placementPreviewCellCount(invalid)).toBe(1)
     expect(placementPreviewCellCount(null)).toBe(0)
+  })
+
+  it('실제 placement ghost는 capture cube를 숨기고 invalid 색과 target matrix를 적용한다', () => {
+    const cube = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshBasicMaterial(),
+    )
+    const selected = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshBasicMaterial(),
+      2,
+    )
+    const updatePreview = (
+      threeScene as unknown as Record<string, unknown>
+    ).updatePreview
+    expect(typeof updatePreview).toBe('function')
+    if (typeof updatePreview !== 'function') return
+
+    updatePreview(cube, selected, null, {
+      valid: false,
+      failureCode: 'PLAYER_OVERLAP',
+      anchor: { x: 2, y: 3, z: 4 },
+      cells: [{
+        index: { x: 2, y: 3, z: 4 },
+        material: 'wood',
+        collidable: true,
+        wireable: true,
+        capturable: true,
+        destructible: true,
+        owner: 'player',
+      }],
+    })
+
+    const matrix = new THREE.Matrix4()
+    const position = new THREE.Vector3()
+    selected.getMatrixAt(0, matrix)
+    position.setFromMatrixPosition(matrix)
+    expect(cube.visible).toBe(false)
+    expect(selected.visible).toBe(true)
+    expect(selected.count).toBe(1)
+    expect((selected.material as THREE.MeshBasicMaterial).color.getHex()).toBe(0xff6b6b)
+    expect(position.toArray()).toEqual([1.25, 1.75, 2.25])
   })
 })
