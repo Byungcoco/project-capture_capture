@@ -1,6 +1,7 @@
 import type { Vec3 } from './math'
 import { createAabbCollisionWorld } from './aabb-collision-world'
 import type { CollisionWorld } from './collision-world'
+import { createValidationMemo } from './terrain-validation-memo'
 
 export const CELL_SIZE = 0.5
 
@@ -80,6 +81,16 @@ export function assertValidTerrain(terrain: readonly TerrainCell[]): void {
     }
     keys.add(key)
   }
+}
+
+const terrainValidationMemo = createValidationMemo<readonly TerrainCell[]>(assertValidTerrain)
+
+export function assertValidTerrainOnce(terrain: readonly TerrainCell[]): void {
+  terrainValidationMemo.assert(terrain)
+}
+
+export function markTerrainValidated(terrain: readonly TerrainCell[]): void {
+  terrainValidationMemo.markValidated(terrain)
 }
 
 export function compareCellIndices(first: TerrainCell, second: TerrainCell): number {

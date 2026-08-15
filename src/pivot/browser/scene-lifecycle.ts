@@ -7,12 +7,23 @@ export interface PageHideLikeEvent {
 }
 
 export function createPageHideHandler(disposeScene: () => void): (event: PageHideLikeEvent) => void {
-  return () => disposeScene()
+  let disposed = false
+  return (event) => {
+    if (event.persisted || disposed) return
+    disposed = true
+    disposeScene()
+  }
 }
 
 export function createSceneDispose(
-  _previewCells: DisposableSceneInstance,
+  previewCells: DisposableSceneInstance,
   disposeResources: () => void,
 ): () => void {
-  return () => disposeResources()
+  let disposed = false
+  return () => {
+    if (disposed) return
+    disposed = true
+    previewCells.dispose()
+    disposeResources()
+  }
 }

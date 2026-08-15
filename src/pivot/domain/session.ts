@@ -3,7 +3,12 @@ import { TICK_SECONDS } from '../../core/constants'
 import { createAabbCollisionWorld } from './aabb-collision-world'
 import { assertValidCaptureStack, captureCells } from './capture'
 import type { CapturedChunk } from './capture'
-import { assertValidTerrain, createCellCollisionWorld, sortTerrainCells } from './cell-world'
+import {
+  assertValidTerrain,
+  createCellCollisionWorld,
+  markTerrainValidated,
+  sortTerrainCells,
+} from './cell-world'
 import type { TerrainCell } from './cell-world'
 import type { CollisionWorld } from './collision-world'
 import { createPlayerState, stepPlayer } from './player'
@@ -178,15 +183,19 @@ function freezeColliders(
 
 function freezeTerrain(terrain: readonly TerrainCell[]): readonly TerrainCell[] {
   assertValidTerrain(terrain)
-  return Object.freeze(sortTerrainCells(terrain).map((cell) => Object.freeze({
+  const frozen = Object.freeze(sortTerrainCells(terrain).map((cell) => Object.freeze({
     ...cell,
     index: Object.freeze({ ...cell.index }),
   })))
+  markTerrainValidated(frozen)
+  return frozen
 }
 
 function freezeTerrainReferences(terrain: readonly TerrainCell[]): readonly TerrainCell[] {
   assertValidTerrain(terrain)
-  return Object.freeze([...terrain])
+  const frozen = Object.freeze([...terrain])
+  markTerrainValidated(frozen)
+  return frozen
 }
 
 function freezeCaptureStack(stack: readonly CapturedChunk[]): readonly CapturedChunk[] {

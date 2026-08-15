@@ -6,10 +6,15 @@ export interface ValidationMemo<T extends object> {
 export function createValidationMemo<T extends object>(
   validate: (value: T) => void,
 ): ValidationMemo<T> {
+  const validated = new WeakSet<T>()
   return {
     assert(value): void {
+      if (Object.isFrozen(value) && validated.has(value)) return
       validate(value)
+      if (Object.isFrozen(value)) validated.add(value)
     },
-    markValidated(): void {},
+    markValidated(value): void {
+      if (Object.isFrozen(value)) validated.add(value)
+    },
   }
 }

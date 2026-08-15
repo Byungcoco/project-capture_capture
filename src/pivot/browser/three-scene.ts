@@ -8,6 +8,7 @@ import type { CapturePreview } from '../domain/capture'
 import { CELL_SIZE, cellCenter } from '../domain/cell-world'
 import type { TerrainCell, TerrainMaterial } from '../domain/cell-world'
 import { createTerrainMeshLifecycle } from './terrain-mesh-lifecycle'
+import { createSceneDispose } from './scene-lifecycle'
 
 const PLAYER_COLOR = 0xffd166
 const TERRAIN_COLOR = 0x29465b
@@ -209,6 +210,21 @@ export function createPivotScene(root: HTMLElement): PivotScene {
     preparedSnapshot = null
   }
   resize()
+  const disposeScene = createSceneDispose(previewCells, () => {
+    for (const mesh of terrainMeshLifecycle.current()) scene.remove(mesh)
+    terrainMeshLifecycle.dispose()
+    cellGeometry.dispose()
+    for (const material of cellMaterials.values()) material.dispose()
+    previewCube.geometry.dispose()
+    disposeMaterial(previewCube.material)
+    previewCells.geometry.dispose()
+    disposeMaterial(previewCells.material)
+    player.geometry.dispose()
+    disposeMaterial(player.material)
+    wireGeometry.dispose()
+    disposeMaterial(wire.material)
+    renderer.dispose()
+  })
 
   return {
     canvas: renderer.domElement,
@@ -249,21 +265,7 @@ export function createPivotScene(root: HTMLElement): PivotScene {
       updateCapturePreview(previewCube, previewCells, preview)
       renderer.render(scene, camera)
     },
-    dispose(): void {
-      for (const mesh of terrainMeshLifecycle.current()) scene.remove(mesh)
-      terrainMeshLifecycle.dispose()
-      cellGeometry.dispose()
-      for (const material of cellMaterials.values()) material.dispose()
-      previewCube.geometry.dispose()
-      disposeMaterial(previewCube.material)
-      previewCells.geometry.dispose()
-      disposeMaterial(previewCells.material)
-      player.geometry.dispose()
-      disposeMaterial(player.material)
-      wireGeometry.dispose()
-      disposeMaterial(wire.material)
-      renderer.dispose()
-    },
+    dispose: disposeScene,
   }
 }
 

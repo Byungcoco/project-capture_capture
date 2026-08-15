@@ -6,6 +6,7 @@ import { solveCameraAim } from './pivot/browser/aim'
 import { createBrowserInput } from './pivot/browser/browser-input'
 import { createPivotHud } from './pivot/browser/hud'
 import { createPivotScene } from './pivot/browser/three-scene'
+import { createPageHideHandler } from './pivot/browser/scene-lifecycle'
 import { MOVEMENT_SPAWN, MOVEMENT_TERRAIN } from './pivot/demo/movement-course'
 import { previewCapture } from './pivot/domain/capture'
 import { WIRE_RANGE, createPlayerState, playerWireOrigin } from './pivot/domain/player'
@@ -68,6 +69,6 @@ function frame(timeMilliseconds: number): void {
 }
 
 window.addEventListener('resize', scene.resize)
-window.addEventListener('pagehide', scene.dispose, { once: true })
+window.addEventListener('pagehide', createPageHideHandler(scene.dispose))
 scene.render(session.snapshot, input.getState())
 requestAnimationFrame(frame)

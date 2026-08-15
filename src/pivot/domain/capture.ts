@@ -1,7 +1,7 @@
 import type { CaptureBasis } from './commands'
 import {
   CELL_SIZE,
-  assertValidTerrain,
+  assertValidTerrainOnce,
   cellCenter,
   cellKey,
   compareCellIndices,
@@ -87,7 +87,7 @@ export function previewCapture(
   request: CaptureRequest,
   stack: readonly CapturedChunk[] = [],
 ): CapturePreview | null {
-  assertValidTerrain(terrain)
+  assertValidTerrainOnce(terrain)
   const plan = planCapture({ terrain, stack }, request)
   if (plan.cubeCenter === null) return null
   return {
@@ -145,7 +145,7 @@ export function chooseCaptureAnchor(
 }
 
 export function captureCells(state: CaptureState, request: CaptureRequest): CaptureResult {
-  assertValidTerrain(state.terrain)
+  assertValidTerrainOnce(state.terrain)
   const plan = planCapture(state, request)
   if (!plan.ok) return failure(state, plan.code)
   const { anchor, cells: selected } = plan
