@@ -7,6 +7,7 @@ import {
   captureCells,
   chooseCaptureAnchor,
   selectCaptureCells,
+  previewCapture,
 } from './capture'
 import type { CaptureRequest, CapturedChunk, CaptureState } from './capture'
 import { cellKey } from './cell-world'
@@ -146,6 +147,29 @@ describe('정육면체 절취 캡처', () => {
       expect(result).toMatchObject({ ok: false, code: entry.code })
       expect(result.state).toEqual(before)
     }
+  })
+
+  it('preview는 stack full과 216셀 초과를 transaction과 같은 실패로 표시한다', () => {
+    const validTerrain = [terrainCell({ x: 0, y: 0, z: 0 })]
+    const fullStack = Array.from(
+      { length: CAPTURE_STACK_LIMIT },
+      (_, index) => capturedChunk(`existing-${index}`),
+    )
+    const tooLargeTerrain = tooLargeCaptureCells()
+
+    const fullPreview = previewCapture(validTerrain, request(), fullStack)
+    const largePreview = previewCapture(tooLargeTerrain, request(), [])
+
+    expect(fullPreview).toMatchObject({
+      valid: false,
+      failureCode: 'STACK_FULL',
+      cells: [],
+    })
+    expect(largePreview).toMatchObject({
+      valid: false,
+      failureCode: 'CAPTURE_TOO_LARGE',
+      cells: [],
+    })
   })
 })
 

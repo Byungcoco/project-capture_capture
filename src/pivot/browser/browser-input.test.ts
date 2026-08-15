@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
 import { createBrowserInputState, reduceBrowserInput, sampleBrowserInput } from './browser-input'
-import type { BrowserInputEvent } from './browser-input'
 
 const FORWARD = { x: 0, y: 0, z: -1 }
 
@@ -61,15 +60,37 @@ describe('피벗 브라우저 입력 adapter', () => {
 
   it('오른쪽 클릭 capture edge를 한 번만 소비한다', () => {
     let state = createBrowserInputState()
+    state = reduceBrowserInput(state, { type: 'pointer-lock', locked: true })
     state = reduceBrowserInput(state, {
       type: 'mouse-down',
       button: 2,
-    } as unknown as BrowserInputEvent)
+    })
 
     const first = sampleBrowserInput(state, FORWARD, FORWARD)
     const second = sampleBrowserInput(first.state, FORWARD, FORWARD)
 
     expect(first.command.capturePressed).toBe(true)
     expect(second.command.capturePressed).toBe(false)
+  })
+
+  it('capture edge는 lock 밖에서 무시하고 무틱 frame에 보존하며 unlock blur에서 지운다', () => {
+    let state = createBrowserInputState()
+    state = reduceBrowserInput(state, { type: 'mouse-down', button: 2 })
+    expect(sampleBrowserInput(state, FORWARD, FORWARD).command.capturePressed).toBe(false)
+
+    state = reduceBrowserInput(state, { type: 'pointer-lock', locked: true })
+    state = reduceBrowserInput(state, { type: 'mouse-down', button: 2 })
+    state = reduceBrowserInput(state, { type: 'mouse-move', movementX: 0, movementY: 0 })
+    const firstTick = sampleBrowserInput(state, FORWARD, FORWARD)
+    const secondTick = sampleBrowserInput(firstTick.state, FORWARD, FORWARD)
+    expect(firstTick.command.capturePressed).toBe(true)
+    expect(secondTick.command.capturePressed).toBe(false)
+
+    state = reduceBrowserInput(state, { type: 'pointer-lock', locked: false })
+    expect(sampleBrowserInput(state, FORWARD, FORWARD).command.capturePressed).toBe(false)
+    state = reduceBrowserInput(state, { type: 'pointer-lock', locked: true })
+    state = reduceBrowserInput(state, { type: 'mouse-down', button: 2 })
+    state = reduceBrowserInput(state, { type: 'blur' })
+    expect(sampleBrowserInput(state, FORWARD, FORWARD).command.capturePressed).toBe(false)
   })
 })

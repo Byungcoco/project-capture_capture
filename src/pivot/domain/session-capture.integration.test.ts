@@ -4,6 +4,8 @@ import { IDLE_PLAYER_COMMAND } from './commands'
 import type { TerrainCell } from './cell-world'
 import { createPlayerState } from './player'
 import { createPivotSession, stepPivotSession } from './session'
+import type { CollisionWorld } from './collision-world'
+import type { CapturedChunk } from './capture'
 
 const CAPTURE_COMMAND = {
   ...IDLE_PLAYER_COMMAND,
@@ -45,6 +47,60 @@ describe('셀 지형 session 통합', () => {
     expect(next.snapshot.terrain).toHaveLength(0)
     expect(next.state.player.position.z).toBeCloseTo(0.7, 10)
   })
+
+  it('terrain 모드와 custom world 모드를 함께 구성하면 안정 code로 거부한다', () => {
+    expect(() => createPivotSession({
+      terrain: captureWall(),
+      world: emptyWorld(),
+    })).toThrowError(expect.objectContaining({ code: 'INVALID_SESSION_MODE' }))
+  })
+
+  it('변경 없는 큰 terrain tick은 frozen terrain과 stack snapshot 참조를 재사용한다', () => {
+    const terrain = Array.from({ length: 2_000 }, (_, x) => terrainCellAt(x))
+    const session = createPivotSession({ terrain })
+    const terrainSnapshot = session.snapshot.terrain
+    const stackSnapshot = session.snapshot.captureStack
+
+    const next = stepPivotSession(session, IDLE_PLAYER_COMMAND)
+
+    expect(Object.isFrozen(terrainSnapshot)).toBe(true)
+    expect(next.snapshot.terrain).toBe(terrainSnapshot)
+    expect(next.snapshot.captureStack).toBe(stackSnapshot)
+  })
+
+  it('source와 snapshot의 terrain stack nested 변경은 authority와 query를 바꾸지 않는다', () => {
+    const sourceTerrain = captureWall()
+    const sourceStack: CapturedChunk[] = [{
+      id: 'source',
+      source: 'terrain',
+      captureBasis: CAPTURE_COMMAND.captureBasis,
+      cells: [{
+        gridOffset: { x: 0, y: 0, z: 0 },
+        material: 'rock',
+        collidable: true,
+        wireable: true,
+      }],
+    }]
+    const session = createPivotSession({ terrain: sourceTerrain, captureStack: sourceStack })
+    sourceTerrain[0]!.index.z = 20
+    sourceStack[0]!.captureBasis.forward.z = 1
+    sourceStack[0]!.cells[0]!.gridOffset.x = 10
+
+    expect(() => {
+      session.snapshot.terrain[0]!.index.z = 30
+    }).toThrow(TypeError)
+    expect(() => {
+      session.snapshot.captureStack[0]!.cells[0]!.gridOffset.x = 30
+    }).toThrow(TypeError)
+    expect(session.state.terrain[0]?.index.z).toBe(0)
+    expect(session.state.captureStack[0]?.captureBasis.forward.z).toBe(-1)
+    expect(session.state.captureStack[0]?.cells[0]?.gridOffset.x).toBe(0)
+    expect(session.world.raycast(
+      { x: 0.25, y: 0.75, z: 2 },
+      { x: 0, y: 0, z: -1 },
+      10,
+    )?.distance).toBeCloseTo(1.5, 10)
+  })
 })
 
 function captureWall(): TerrainCell[] {
@@ -57,4 +113,24 @@ function captureWall(): TerrainCell[] {
     destructible: true,
     owner: 'level',
   }]
+}
+
+function terrainCellAt(x: number): TerrainCell {
+  return {
+    ...captureWall()[0]!,
+    index: { x, y: 1, z: 0 },
+  }
+}
+
+function emptyWorld(): CollisionWorld {
+  return {
+    raycast: () => null,
+    moveAabb: (position, velocity) => ({
+      position,
+      velocity,
+      grounded: false,
+      blocked: false,
+      contacts: [],
+    }),
+  }
 }

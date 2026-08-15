@@ -18,6 +18,17 @@ const MATERIAL_COLORS: Record<TerrainMaterial, number> = {
   water: 0x296f9e,
 }
 
+export function terrainNeedsSync(
+  _previous: readonly TerrainCell[] | null,
+  _next: readonly TerrainCell[],
+): boolean {
+  return true
+}
+
+export function capturePreviewCellCount(preview: CapturePreview | null): number {
+  return preview === null ? 0 : Math.min(preview.cells.length, CAPTURE_MAX_CELLS)
+}
+
 export interface PivotScene {
   canvas: HTMLCanvasElement
   getCameraRay(snapshot: GameSnapshot, view: BrowserInputState): Ray3

@@ -45,6 +45,8 @@ export interface CaptureRequest {
 }
 
 export interface CapturePreview {
+  valid: boolean
+  failureCode: CaptureFailureCode | null
   cubeCenter: Vec3
   cells: readonly TerrainCell[]
   basis: CaptureBasis
@@ -57,6 +59,7 @@ export type CaptureResult =
 export function previewCapture(
   terrain: readonly TerrainCell[],
   request: CaptureRequest,
+  _stack: readonly CapturedChunk[] = [],
 ): CapturePreview | null {
   const direction = normalizeVec3(request.direction)
   const target = nearestCollidableCell(terrain, request.origin, direction)
@@ -72,6 +75,8 @@ export function previewCapture(
     z: request.origin.z + direction.z * target.distance,
   }
   return {
+    valid: true,
+    failureCode: null,
     cubeCenter,
     cells: selectCaptureCells(terrain, cubeCenter, request.basis),
     basis: structuredClone(request.basis),

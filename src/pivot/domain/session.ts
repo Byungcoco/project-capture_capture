@@ -105,6 +105,15 @@ export function stepPivotSession(
   }
 }
 
+export class PivotSessionConfigurationError extends Error {
+  readonly code = 'INVALID_SESSION_MODE'
+
+  constructor(message: string) {
+    super(message)
+    this.name = 'PivotSessionConfigurationError'
+  }
+}
+
 function toSnapshot(
   state: WorldState,
   snapshotColliders: readonly StaticCollider[],

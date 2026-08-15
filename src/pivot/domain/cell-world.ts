@@ -6,6 +6,17 @@ export const CELL_SIZE = 0.5
 
 export type TerrainMaterial = 'soil' | 'rock' | 'wood' | 'water'
 export type TerrainOwner = 'level' | 'player' | 'boss'
+export type TerrainValidationErrorCode = 'INVALID_CELL_INDEX' | 'DUPLICATE_CELL_KEY'
+
+export class TerrainValidationError extends Error {
+  constructor(
+    public readonly code: TerrainValidationErrorCode,
+    message: string,
+  ) {
+    super(message)
+    this.name = 'TerrainValidationError'
+  }
+}
 
 export interface CellIndex {
   x: number
