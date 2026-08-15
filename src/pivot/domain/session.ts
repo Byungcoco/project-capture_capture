@@ -1,4 +1,7 @@
 import type { PlayerCommand } from './commands'
+import { TICK_SECONDS } from '../../core/constants'
+import { createAabbCollisionWorld } from './aabb-collision-world'
+import type { CollisionWorld } from './collision-world'
 import { createPlayerState, stepPlayer } from './player'
 import type { PlayerState, StaticCollider } from './player'
 import type { Vec3 } from './math'
@@ -18,11 +21,13 @@ export interface GameSnapshot {
 export interface PivotSession {
   state: WorldState
   snapshot: GameSnapshot
+  world: CollisionWorld
 }
 
 export interface PivotSessionOptions {
   player?: PlayerState
   colliders?: readonly StaticCollider[]
+  world?: CollisionWorld
 }
 
 export function createPivotSession(
@@ -33,7 +38,11 @@ export function createPivotSession(
     player: options.player ?? createPlayerState(),
     colliders: options.colliders ?? [],
   }
-  return { state, snapshot: toSnapshot(state) }
+  return {
+    state,
+    snapshot: toSnapshot(state),
+    world: options.world ?? createAabbCollisionWorld(state.colliders),
+  }
 }
 
 export function stepPivotSession(
@@ -43,13 +52,17 @@ export function stepPivotSession(
   const state: WorldState = {
     ...session.state,
     tick: session.state.tick + 1,
-    player: stepPlayer(session.state.player, command, session.state.colliders, 1 / 60),
+    player: stepPlayer(session.state.player, command, session.world, TICK_SECONDS),
   }
-  return { state, snapshot: toSnapshot(state) }
+  return { state, snapshot: toSnapshot(state), world: session.world }
 }
 
 function toSnapshot(state: WorldState): GameSnapshot {
-  return structuredClone(state)
+  return {
+    tick: state.tick,
+    player: structuredClone(state.player),
+    colliders: state.colliders,
+  }
 }
 
 export function playerAabbRight(player: PlayerState): number {
