@@ -19,6 +19,8 @@ const MAX_ENTITY_HP = 10_000
 const MAX_PROJECTILE_TTL = 36_000
 const MAX_PROJECTILE_RADIUS = 16
 const MAX_ENTITY_HALF_SIZE = 16
+const MAX_ENEMY_COUNT = 1_024
+const MAX_PROJECTILE_COUNT = 4_096
 const COLLISION_EPSILON = 1e-8
 
 export interface EnemyState {
@@ -72,11 +74,14 @@ export class CombatValidationError extends Error {
 }
 
 export function createCombatState(
-  enemies: readonly EnemyState[] = [],
-  projectiles: readonly ProjectileState[] = [],
-  playerHp = PLAYER_MAX_HP,
+  enemiesInput: unknown = [],
+  projectilesInput: unknown = [],
+  playerHpInput: unknown = PLAYER_MAX_HP,
 ): CombatState {
-  assertValidCombatOptions(enemies, projectiles, playerHp)
+  assertValidCombatOptions(enemiesInput, projectilesInput, playerHpInput)
+  const enemies = enemiesInput as readonly EnemyState[]
+  const projectiles = projectilesInput as readonly ProjectileState[]
+  const playerHp = playerHpInput as number
   return {
     playerHp,
     playerMaxHp: PLAYER_MAX_HP,
@@ -91,6 +96,7 @@ export function stepCombat(state: CombatState, request: CombatStepRequest): Comb
   let playerHp = state.playerHp
   const enemies = state.enemies.map(cloneEnemy).sort(compareId)
   const projectiles = state.projectiles.map(cloneProjectile).sort(compareId)
+  const projectileIds = new Set(projectiles.map(({ id }) => id))
   const shotDirection = validShotDirection(request.command.shootDirection)
 
   if (
@@ -102,8 +108,9 @@ export function stepCombat(state: CombatState, request: CombatStepRequest): Comb
     const origin = distance(request.command.shootOrigin, request.playerPosition) <= 2
       ? { ...request.command.shootOrigin }
       : addScaled(request.playerPosition, shotDirection, 0.6)
-    projectiles.push({
-      id: `player-shot-${request.tick}`,
+    const id = `player-shot-${request.tick}`
+    if (!projectileIds.has(id)) projectiles.push({
+      id,
       owner: 'player',
       position: origin,
       velocity: scale(shotDirection, PLAYER_SHOT_SPEED),
@@ -111,6 +118,7 @@ export function stepCombat(state: CombatState, request: CombatStepRequest): Comb
       ttl: PLAYER_SHOT_TTL,
       radius: PROJECTILE_RADIUS,
     })
+    projectileIds.add(id)
     nextPlayerShotTick = request.tick + PLAYER_FIRE_COOLDOWN_TICKS
   }
 
@@ -119,8 +127,10 @@ export function stepCombat(state: CombatState, request: CombatStepRequest): Comb
     const direction = normalized(subtract(request.playerPosition, enemy.position))
     enemy.nextShotTick = request.tick + ENEMY_FIRE_INTERVAL_TICKS
     if (direction === null) continue
+    const id = `enemy-shot-${enemy.id}-${request.tick}`
+    if (projectileIds.has(id)) continue
     projectiles.push({
-      id: `enemy-shot-${enemy.id}-${request.tick}`,
+      id,
       owner: 'enemy',
       position: { ...enemy.position },
       velocity: scale(direction, ENEMY_SHOT_SPEED),
@@ -128,19 +138,23 @@ export function stepCombat(state: CombatState, request: CombatStepRequest): Comb
       ttl: ENEMY_SHOT_TTL,
       radius: PROJECTILE_RADIUS,
     })
+    projectileIds.add(id)
   }
 
   const survivors: ProjectileState[] = []
   for (const projectile of projectiles.sort(compareId)) {
+    if (projectile.ttl <= 0 || projectileOutOfBounds(projectile.position)) continue
     const delta = scale(projectile.velocity, request.stepSeconds)
     const travelDistance = length(delta)
+    const sphereSweepAvailable = request.world.sweepSphere !== undefined
     const terrainHit = travelDistance <= COLLISION_EPSILON
       ? null
-      : request.world.raycast(
-          projectile.position,
-          projectile.velocity,
-          travelDistance + projectile.radius,
-        )
+      : request.world.sweepSphere?.(projectile.position, delta, projectile.radius)
+        ?? request.world.raycast(
+            projectile.position,
+            projectile.velocity,
+            travelDistance + projectile.radius,
+          )
     const targetHit = projectile.owner === 'player'
       ? nearestEnemyHit(projectile, delta, enemies)
       : segmentAabbDistance(
@@ -152,7 +166,9 @@ export function stepCombat(state: CombatState, request: CombatStepRequest): Comb
     const targetDistance = typeof targetHit === 'number' ? targetHit : targetHit?.distance ?? null
     const terrainDistance = terrainHit === null
       ? null
-      : Math.max(0, terrainHit.distance - projectile.radius)
+      : sphereSweepAvailable
+        ? terrainHit.distance
+        : Math.max(0, terrainHit.distance - projectile.radius)
     if (
       terrainDistance !== null
       && (targetDistance === null || terrainDistance <= targetDistance + COLLISION_EPSILON)
@@ -210,36 +226,47 @@ export function freezeCombatState(state: CombatState): CombatState {
 }
 
 export function assertValidCombatOptions(
-  enemies: readonly EnemyState[],
-  projectiles: readonly ProjectileState[],
-  playerHp: number,
+  enemiesInput: unknown,
+  projectilesInput: unknown,
+  playerHp: unknown,
 ): void {
   if (!finiteInRange(playerHp, 0, PLAYER_MAX_HP)) invalid('player HP 범위가 유효하지 않습니다.')
+  if (!Array.isArray(enemiesInput) || enemiesInput.length > MAX_ENEMY_COUNT) {
+    invalid('enemy 목록 형태 또는 개수 상한이 유효하지 않습니다.')
+  }
+  if (!Array.isArray(projectilesInput) || projectilesInput.length > MAX_PROJECTILE_COUNT) {
+    invalid('projectile 목록 형태 또는 개수 상한이 유효하지 않습니다.')
+  }
+  const enemies = enemiesInput as readonly unknown[]
+  const projectiles = projectilesInput as readonly unknown[]
   assertUniqueIds(enemies, 'enemy')
   assertUniqueIds(projectiles, 'projectile')
-  for (const enemy of enemies) {
+  for (const value of enemies) {
+    if (!isRecord(value)) invalid('enemy entry 형태가 유효하지 않습니다.')
+    const enemy = value as Record<string, unknown>
     if (
       !finiteVec3(enemy.position)
       || !positiveBoundedVec3(enemy.halfSize, MAX_ENTITY_HALF_SIZE)
       || !finiteInRange(enemy.maxHp, 1, MAX_ENTITY_HP)
       || !finiteInRange(enemy.hp, 0, enemy.maxHp)
-      || !Number.isSafeInteger(enemy.nextShotTick)
-      || enemy.nextShotTick < 0
+      || !safeIntegerInRange(enemy.nextShotTick, 0, Number.MAX_SAFE_INTEGER)
       || typeof enemy.alive !== 'boolean'
-      || enemy.alive !== (enemy.hp > 0)
+      || enemy.alive !== ((enemy.hp as number) > 0)
     ) invalid(`enemy ${enemy.id} 상태가 유효하지 않습니다.`)
   }
-  for (const projectile of projectiles) {
+  for (const value of projectiles) {
+    if (!isRecord(value)) invalid('projectile entry 형태가 유효하지 않습니다.')
+    const projectile = value as Record<string, unknown>
     if (
       (projectile.owner !== 'player' && projectile.owner !== 'enemy')
       || !finiteVec3(projectile.position)
       || !finiteVec3(projectile.velocity)
       || !finiteInRange(projectile.damage, 0, MAX_ENTITY_HP)
       || projectile.damage <= 0
-      || !Number.isSafeInteger(projectile.ttl)
-      || projectile.ttl <= 0
-      || projectile.ttl > MAX_PROJECTILE_TTL
+      || !safeIntegerInRange(projectile.ttl, 1, MAX_PROJECTILE_TTL)
       || !finiteInRange(projectile.radius, Number.MIN_VALUE, MAX_PROJECTILE_RADIUS)
+      || (projectile.id as string).startsWith('player-shot-')
+      || (projectile.id as string).startsWith('enemy-shot-')
     ) invalid(`projectile ${projectile.id} 상태가 유효하지 않습니다.`)
   }
 }
@@ -306,10 +333,15 @@ function projectileOutOfBounds(position: Vec3): boolean {
     || Math.abs(position.z) > 256
 }
 
-function assertUniqueIds(values: readonly { id: string }[], kind: string): void {
+function assertUniqueIds(values: readonly unknown[], kind: string): void {
   const ids = new Set<string>()
   for (const value of values) {
-    if (typeof value.id !== 'string' || value.id.length === 0 || ids.has(value.id)) {
+    if (
+      !isRecord(value)
+      || typeof value.id !== 'string'
+      || value.id.length === 0
+      || ids.has(value.id)
+    ) {
       invalid(`${kind} id는 비어 있지 않은 고유 문자열이어야 합니다.`)
     }
     ids.add(value.id)
@@ -329,21 +361,39 @@ function cloneProjectile(projectile: ProjectileState): ProjectileState {
 }
 
 function compareId(first: { id: string }, second: { id: string }): number {
-  return first.id.localeCompare(second.id)
+  return first.id < second.id ? -1 : first.id > second.id ? 1 : 0
 }
 
-function finiteVec3(value: Vec3): boolean {
-  return Number.isFinite(value.x) && Number.isFinite(value.y) && Number.isFinite(value.z)
+function finiteVec3(value: unknown): value is Vec3 {
+  return isRecord(value)
+    && finiteNumber(value.x)
+    && finiteNumber(value.y)
+    && finiteNumber(value.z)
 }
 
-function positiveBoundedVec3(value: Vec3, maximum: number): boolean {
+function positiveBoundedVec3(value: unknown, maximum: number): value is Vec3 {
   return finiteVec3(value) && (['x', 'y', 'z'] as const).every((axis) => (
     value[axis] > 0 && value[axis] <= maximum
   ))
 }
 
-function finiteInRange(value: number, minimum: number, maximum: number): boolean {
-  return Number.isFinite(value) && value >= minimum && value <= maximum
+function finiteInRange(value: unknown, minimum: number, maximum: number): value is number {
+  return finiteNumber(value) && value >= minimum && value <= maximum
+}
+
+function safeIntegerInRange(value: unknown, minimum: number, maximum: number): value is number {
+  return typeof value === 'number'
+    && Number.isSafeInteger(value)
+    && value >= minimum
+    && value <= maximum
+}
+
+function finiteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
 }
 
 function normalized(value: Vec3): Vec3 | null {

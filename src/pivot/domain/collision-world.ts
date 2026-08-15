@@ -34,6 +34,7 @@ export interface CollisionWorld {
     stepSeconds: number,
   ): CollisionMoveResult
   raycast(origin: Vec3, direction: Vec3, maximumDistance: number): CollisionRayHit | null
+  sweepSphere?(origin: Vec3, displacement: Vec3, radius: number): CollisionRayHit | null
   queryWireCandidates?(
     origin: Vec3,
     aimDirection: Vec3,

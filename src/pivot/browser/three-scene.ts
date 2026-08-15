@@ -75,49 +75,67 @@ export function syncCombatMeshes(
   meshes: THREE.Object3D[],
   snapshot: Pick<GameSnapshot, 'enemies' | 'projectiles'>,
 ): void {
-  disposeCombatMeshes(scene, meshes)
+  const reusable = new Map(meshes.map((mesh) => [mesh.userData.combatKey as string, mesh]))
+  const nextMeshes: THREE.Object3D[] = []
   for (const enemy of snapshot.enemies) {
     if (!enemy.alive) continue
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(
-        enemy.halfSize?.x === undefined ? 1.1 : enemy.halfSize.x * 2,
-        enemy.halfSize?.y === undefined ? 1.5 : enemy.halfSize.y * 2,
-        enemy.halfSize?.z === undefined ? 1.1 : enemy.halfSize.z * 2,
-      ),
-      new THREE.MeshStandardMaterial({ color: ENEMY_COLOR, roughness: 0.58 }),
-    )
+    const key = `enemy:${enemy.id}`
+    const existing = reusable.get(key)
+    const body = existing ?? createEnemyMesh(enemy.halfSize ?? { x: 0.55, y: 0.75, z: 0.55 })
+    reusable.delete(key)
+    body.userData.combatKey = key
     body.position.set(enemy.position.x, enemy.position.y, enemy.position.z)
-    body.castShadow = true
-    const eyeGeometry = new THREE.BoxGeometry(0.12, 0.12, 0.04)
-    const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xfff4d6 })
-    for (const x of [-0.2, 0.2]) {
-      const eye = new THREE.Mesh(eyeGeometry, eyeMaterial)
-      eye.position.set(x, 0.18, -((enemy.halfSize?.z ?? 0.55) + 0.025))
-      body.add(eye)
-    }
-    scene.add(body)
-    meshes.push(body)
+    if (existing === undefined) scene.add(body)
+    nextMeshes.push(body)
   }
   for (const projectile of snapshot.projectiles) {
-    const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(projectile.radius, 8, 6),
-      new THREE.MeshStandardMaterial({
-        color: projectile.owner === 'player'
-          ? PLAYER_PROJECTILE_COLOR
-          : ENEMY_PROJECTILE_COLOR,
-        emissive: projectile.owner === 'player' ? 0x554400 : 0x551600,
-      }),
-    )
+    const key = `projectile:${projectile.owner}:${projectile.id}`
+    const existing = reusable.get(key)
+    const mesh = existing ?? createProjectileMesh(projectile.owner, projectile.radius)
+    reusable.delete(key)
+    mesh.userData.combatKey = key
     mesh.position.set(projectile.position.x, projectile.position.y, projectile.position.z)
-    scene.add(mesh)
-    meshes.push(mesh)
+    if (existing === undefined) scene.add(mesh)
+    nextMeshes.push(mesh)
   }
+  disposeCombatObjects(scene, [...reusable.values()])
+  meshes.splice(0, meshes.length, ...nextMeshes)
 }
 
 export function disposeCombatMeshes(scene: THREE.Scene, meshes: THREE.Object3D[]): void {
+  disposeCombatObjects(scene, meshes.splice(0))
+}
+
+function createEnemyMesh(halfSize: Vec3): THREE.Mesh {
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(halfSize.x * 2, halfSize.y * 2, halfSize.z * 2),
+    new THREE.MeshStandardMaterial({ color: ENEMY_COLOR, roughness: 0.58 }),
+  )
+  body.castShadow = true
+  const eyeGeometry = new THREE.BoxGeometry(0.12, 0.12, 0.04)
+  const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xfff4d6 })
+  for (const x of [-0.2, 0.2]) {
+    const eye = new THREE.Mesh(eyeGeometry, eyeMaterial)
+    eye.position.set(x, 0.18, -(halfSize.z + 0.025))
+    body.add(eye)
+  }
+  return body
+}
+
+function createProjectileMesh(owner: 'player' | 'enemy', radius: number): THREE.Mesh {
+  return new THREE.Mesh(
+    new THREE.SphereGeometry(radius, 8, 6),
+    new THREE.MeshStandardMaterial({
+      color: owner === 'player' ? PLAYER_PROJECTILE_COLOR : ENEMY_PROJECTILE_COLOR,
+      emissive: owner === 'player' ? 0x554400 : 0x551600,
+    }),
+  )
+}
+
+function disposeCombatObjects(scene: THREE.Scene, objects: readonly THREE.Object3D[]): void {
   const geometries = new Set<THREE.BufferGeometry>()
   const materials = new Set<THREE.Material>()
-  for (const object of meshes.splice(0)) {
+  for (const object of objects) {
     scene.remove(object)
     object.traverse((entry) => {
       if (!(entry instanceof THREE.Mesh)) return
