@@ -10,6 +10,7 @@ import {
   previewCapture,
 } from './capture'
 import type { CaptureRequest, CapturedChunk, CaptureState } from './capture'
+import * as cellWorld from './cell-world'
 import { cellKey } from './cell-world'
 import type { CellIndex, TerrainCell } from './cell-world'
 import { normalizeVec3 } from './math'
@@ -185,6 +186,40 @@ describe('정육면체 절취 캡처', () => {
       { terrain: duplicateTerrain, stack: [] },
       request(),
     )).toThrowError(expect.objectContaining({ code: 'DUPLICATE_CELL_KEY' }))
+  })
+
+  it('얕게 frozen된 terrain의 nested index mutation을 다시 검증한다', () => {
+    const mutableTerrain = [
+      terrainCell({ x: 0, y: 0, z: 0 }),
+      terrainCell({ x: 1, y: 0, z: 0 }),
+    ]
+    const shallowFrozenTerrain = Object.freeze(mutableTerrain)
+
+    previewCapture(shallowFrozenTerrain, request(), [])
+    mutableTerrain[1].index.x = 0
+
+    expect(() => captureCells(
+      { terrain: shallowFrozenTerrain, stack: [] },
+      request(),
+    )).toThrowError(expect.objectContaining({ code: 'DUPLICATE_CELL_KEY' }))
+  })
+
+  it('public caller는 invalid terrain을 검증 완료로 표시해 우회할 수 없다', () => {
+    const invalidTerrain = Object.freeze([
+      terrainCell({ x: 0, y: 0, z: 0 }),
+      terrainCell({ x: 0, y: 0, z: 0 }, { material: 'wood' }),
+    ])
+    const publicMarker = (
+      cellWorld as unknown as Record<string, unknown>
+    ).markTerrainValidated
+
+    if (typeof publicMarker === 'function') {
+      publicMarker(invalidTerrain)
+    }
+
+    expect(() => previewCapture(invalidTerrain, request(), [])).toThrowError(
+      expect.objectContaining({ code: 'DUPLICATE_CELL_KEY' }),
+    )
   })
 })
 
