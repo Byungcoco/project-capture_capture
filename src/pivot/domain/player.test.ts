@@ -416,6 +416,8 @@ describe('피벗 플레이어', () => {
 
     expect(neutral.velocity.x).toBeLessThan(0)
     expect(neutral.velocity.y).toBeLessThan(0)
+    expect(neutral.velocity.x).toBeCloseTo(-12 / 60, 3)
+    expect(neutral.velocity.y).toBeCloseTo(-12 / 60, 3)
     expect(dot(neutral.velocity, radial)).toBeLessThanOrEqual(0)
     expect(dot(neutral.velocity, radial)).toBeGreaterThan(-0.001)
     expect(steered.velocity.z - neutral.velocity.z).toBeCloseTo(
