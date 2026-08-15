@@ -12,7 +12,8 @@ import type { StaticCollider } from './player'
 const EPSILON = 1e-8
 
 export function createAabbCollisionWorld(colliders: readonly StaticCollider[]): CollisionWorld {
-  const raycastIndex = buildRaycastBvh(colliders)
+  const authority = Object.freeze(colliders.map(snapshotCollider))
+  const raycastIndex = buildRaycastBvh(authority)
   return {
     moveAabb(positionValue, velocityValue, halfSize, stepSeconds): CollisionMoveResult {
       const position = { ...positionValue }
@@ -23,7 +24,7 @@ export function createAabbCollisionWorld(colliders: readonly StaticCollider[]): 
       for (const axis of ['x', 'y', 'z'] as const) {
         const delta = velocity[axis] * stepSeconds
         position[axis] += delta
-        for (const collider of colliders) {
+        for (const collider of authority) {
           if (delta === 0 || !overlaps(position, halfSize, collider)) continue
           position[axis] = delta > 0
             ? collider.center[axis] - collider.halfSize[axis] - halfSize[axis]
@@ -59,7 +60,7 @@ export function createAabbCollisionWorld(colliders: readonly StaticCollider[]): 
         : normalizeVec3(aimDirectionValue)
       const candidates: CollisionWireCandidate[] = []
       const candidateKeys = new Set<string>()
-      for (const collider of colliders) {
+      for (const collider of authority) {
         const points = aabbWireCandidatePoints(
           origin,
           aimDirection,
@@ -94,7 +95,13 @@ export function createAabbCollisionWorld(colliders: readonly StaticCollider[]): 
       maximumDistance,
       tolerance,
     ): CollisionWireCandidate | null {
-      if (!finiteVec3(origin) || !Number.isFinite(tolerance) || tolerance < 0) return null
+      if (
+        !finiteVec3(origin)
+        || !Number.isFinite(maximumDistance)
+        || maximumDistance < 0
+        || !Number.isFinite(tolerance)
+        || tolerance < 0
+      ) return null
       for (const candidate of orderedCandidates) {
         if (!candidate.wireable || !finiteVec3(candidate.point)) continue
         const offset = subtractVec3(candidate.point, origin)
@@ -111,6 +118,14 @@ export function createAabbCollisionWorld(colliders: readonly StaticCollider[]): 
       return null
     },
   }
+}
+
+function snapshotCollider(collider: StaticCollider): StaticCollider {
+  return Object.freeze({
+    center: Object.freeze({ ...collider.center }),
+    halfSize: Object.freeze({ ...collider.halfSize }),
+    wireable: collider.wireable,
+  })
 }
 
 function aabbWireCandidatePoints(
