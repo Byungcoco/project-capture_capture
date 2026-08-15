@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { IDLE_PLAYER_COMMAND } from './commands'
 import type { PlayerCommand } from './commands'
+import type { CollisionWorld } from './collision-world'
 import { createPlayerState } from './player'
 import { createPivotSession, stepPivotSession } from './session'
 import type { PivotSessionOptions } from './session'
@@ -140,6 +141,81 @@ describe('피벗 기본 슈팅 전투', () => {
 
     expect(combat(next).enemies[0]?.hp).toBe(75)
     expect(combat(next).projectiles).toEqual([])
+  })
+
+  it('sweepSphere 없는 custom CollisionWorld도 center-ray fallback으로 side terrain을 놓치면 안 된다', () => {
+    const enemy = testEnemy('enemy-custom-world', { x: 0, y: 0, z: -2 })
+    const projectile = testProjectile('custom-side', 'player', { x: 0, y: 0, z: 0 }, {
+      x: 0, y: 0, z: -180,
+    })
+    const sideWall = {
+      center: { x: 0.15, y: 0, z: -1.48 },
+      halfSize: { x: 0.05, y: 1, z: 0.1 },
+      wireable: false,
+    }
+    const authority = createPivotSession({ colliders: [sideWall] }).world
+    const customWorld = {
+      moveAabb: authority.moveAabb,
+      raycast: authority.raycast,
+    } as unknown as CollisionWorld
+    const session = createPivotSession({
+      world: customWorld,
+      enemies: [enemy],
+      projectiles: [projectile],
+      player: createPlayerState({ position: { x: 0, y: 4, z: 0 } }),
+    } as unknown as PivotSessionOptions)
+
+    const next = stepPivotSession(session, IDLE_PLAYER_COMMAND)
+
+    expect(combat(next).enemies[0]?.hp).toBe(75)
+    expect(combat(next).projectiles).toEqual([])
+  })
+
+  it('zero-velocity projectile은 시작 sphere와 겹친 terrain에 distance 0으로 선제 차폐된다', () => {
+    const session = createPivotSession({
+      colliders: [{
+        center: { x: 0, y: 0, z: 0 },
+        halfSize: { x: 0.25, y: 0.25, z: 0.25 },
+        wireable: false,
+      }],
+      enemies: [testEnemy('enemy-overlap', { x: 0, y: 0, z: 0 })],
+      projectiles: [testProjectile('stationary-overlap', 'player', { x: 0, y: 0, z: 0 }, {
+        x: 0, y: 0, z: 0,
+      })],
+      player: createPlayerState({ position: { x: 0, y: 4, z: 0 } }),
+    } as unknown as PivotSessionOptions)
+
+    const next = stepPivotSession(session, IDLE_PLAYER_COMMAND)
+
+    expect(combat(next).enemies[0]?.hp).toBe(75)
+    expect(combat(next).projectiles).toEqual([])
+  })
+
+  it('enemy target AABB corner에서 실제 radius 밖으로 스친 player projectile은 피해를 주지 않는다', () => {
+    const session = createCombatSession(
+      [testEnemy('enemy-corner-miss', { x: 0, y: 0, z: -1.5 })],
+      [testProjectile('enemy-corner-miss', 'player', { x: 0.65, y: 0.85, z: 0 }, {
+        x: 0, y: 0, z: -180,
+      })],
+    )
+
+    const next = stepPivotSession(session, IDLE_PLAYER_COMMAND)
+
+    expect(combat(next).enemies[0]?.hp).toBe(75)
+    expect(combat(next).projectiles).toHaveLength(1)
+  })
+
+  it('player target AABB corner에서 실제 radius 밖으로 스친 enemy projectile은 피해를 주지 않는다', () => {
+    const session = createCombatSession([], [
+      testProjectile('player-corner-miss', 'enemy', { x: 0.5, y: 1, z: 0 }, {
+        x: 0, y: 0, z: -180,
+      }),
+    ])
+
+    const next = stepPivotSession(session, IDLE_PLAYER_COMMAND)
+
+    expect(combat(next).playerHp).toBe(100)
+    expect(combat(next).projectiles).toHaveLength(1)
   })
 
   it.each([
