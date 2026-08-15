@@ -23,11 +23,9 @@ describe('피벗 브라우저 입력 adapter', () => {
     const first = sampleBrowserInput(state, FORWARD)
     const second = sampleBrowserInput(first.state, FORWARD)
 
-    expect(first.command.wirePressed).toBe(true)
-    expect(first.command.wireReleased).toBe(true)
     expect(first.command.wireEdges).toEqual(['press', 'release'])
-    expect(second.command.wirePressed).toBe(false)
-    expect(second.command.wireReleased).toBe(false)
+    expect(first.command).not.toHaveProperty('wirePressed')
+    expect(first.command).not.toHaveProperty('wireReleased')
     expect(second.command.wireEdges).toEqual([])
   })
 
