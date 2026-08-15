@@ -36,12 +36,27 @@ export function createAabbCollisionWorld(colliders: readonly StaticCollider[]): 
       return { position, velocity, grounded, blocked, contacts }
     },
     raycast(origin, directionValue, maximumDistance): CollisionRayHit | null {
+      if (
+        !finiteVec3(origin)
+        || !finiteVec3(directionValue)
+        || lengthSquared(directionValue) <= EPSILON * EPSILON
+        || !Number.isFinite(maximumDistance)
+        || maximumDistance < 0
+      ) return null
       const direction = normalizeVec3(directionValue)
       let closest: CollisionRayHit | null = null
       for (const collider of colliders) {
         const distance = rayAabbDistance(origin, direction, collider)
-        if (distance === null || distance > maximumDistance) continue
-        if (closest === null || distance < closest.distance) {
+        if (distance === null || !Number.isFinite(distance) || distance > maximumDistance) continue
+        if (
+          closest === null
+          || distance < closest.distance - EPSILON
+          || (
+            Math.abs(distance - closest.distance) <= EPSILON
+            && !collider.wireable
+            && closest.wireable
+          )
+        ) {
           closest = {
             distance,
             wireable: collider.wireable,
@@ -56,22 +71,45 @@ export function createAabbCollisionWorld(colliders: readonly StaticCollider[]): 
       return closest
     },
     queryWireCandidates(origin, aimDirectionValue, maximumDistance): CollisionWireCandidate[] {
-      const aimDirection = normalizeVec3(aimDirectionValue)
+      if (
+        !finiteVec3(origin)
+        || !finiteVec3(aimDirectionValue)
+        || !Number.isFinite(maximumDistance)
+        || maximumDistance < 0
+      ) return []
+      const aimDirection = lengthSquared(aimDirectionValue) <= EPSILON * EPSILON
+        ? { x: 0, y: 0, z: 0 }
+        : normalizeVec3(aimDirectionValue)
       const candidates: CollisionWireCandidate[] = []
       const candidateKeys = new Set<string>()
       for (const collider of colliders) {
-        for (const point of aabbWireCandidatePoints(origin, aimDirection, collider)) {
-          if (distanceVec3(origin, point) > maximumDistance + EPSILON) continue
+        const points = aabbWireCandidatePoints(
+          origin,
+          aimDirection,
+          collider,
+          maximumDistance,
+        ).filter((point) => distanceVec3(origin, point) <= maximumDistance + EPSILON)
+        const closestPoint = closestPointOnAabbSurface(origin, collider)
+        const selected = distanceVec3(origin, closestPoint) <= maximumDistance + EPSILON
+          ? [closestPoint]
+          : []
+        const bestAimPoint = lengthSquared(aimDirection) <= EPSILON * EPSILON
+          ? undefined
+          : points.sort((first, second) => compareAimPoint(
+              origin,
+              aimDirection,
+              first,
+              second,
+            ))[0]
+        if (bestAimPoint !== undefined) selected.push(bestAimPoint)
+        for (const point of selected) {
           const key = `${point.x},${point.y},${point.z},${collider.wireable}`
           if (candidateKeys.has(key)) continue
           candidateKeys.add(key)
           candidates.push({ point, wireable: collider.wireable })
         }
       }
-      return candidates.sort((first, second) => (
-        comparePoint(first.point, second.point)
-        || Number(first.wireable) - Number(second.wireable)
-      ))
+      return candidates
     },
   }
 }
@@ -80,6 +118,7 @@ function aabbWireCandidatePoints(
   origin: Vec3,
   aimDirection: Vec3,
   collider: StaticCollider,
+  maximumDistance: number,
 ): Vec3[] {
   const points = [closestPointOnAabbSurface(origin, collider)]
   for (const axis of ['x', 'y', 'z'] as const) {
@@ -106,6 +145,46 @@ function aabbWireCandidatePoints(
         )
       }
       points.push(point)
+    }
+  }
+  points.push(...sphereAabbEdgeIntersections(origin, maximumDistance, collider))
+  return points
+}
+
+function sphereAabbEdgeIntersections(
+  origin: Vec3,
+  radius: number,
+  collider: StaticCollider,
+): Vec3[] {
+  const points: Vec3[] = []
+  for (const variableAxis of ['x', 'y', 'z'] as const) {
+    const fixedAxes = (['x', 'y', 'z'] as const).filter((axis) => axis !== variableAxis)
+    const firstAxis = fixedAxes[0]
+    const secondAxis = fixedAxes[1]
+    if (firstAxis === undefined || secondAxis === undefined) continue
+    for (const firstSide of [-1, 1] as const) {
+      for (const secondSide of [-1, 1] as const) {
+        const firstValue = collider.center[firstAxis]
+          + collider.halfSize[firstAxis] * firstSide
+        const secondValue = collider.center[secondAxis]
+          + collider.halfSize[secondAxis] * secondSide
+        const remainingSquared = radius * radius
+          - (firstValue - origin[firstAxis]) ** 2
+          - (secondValue - origin[secondAxis]) ** 2
+        if (remainingSquared < -EPSILON) continue
+        const variableOffset = Math.sqrt(Math.max(0, remainingSquared))
+        for (const direction of [-1, 1] as const) {
+          const variableValue = origin[variableAxis] + variableOffset * direction
+          const lower = collider.center[variableAxis] - collider.halfSize[variableAxis]
+          const upper = collider.center[variableAxis] + collider.halfSize[variableAxis]
+          if (variableValue < lower - EPSILON || variableValue > upper + EPSILON) continue
+          const point = { ...origin }
+          point[firstAxis] = firstValue
+          point[secondAxis] = secondValue
+          point[variableAxis] = clamp(variableValue, lower, upper)
+          points.push(point)
+        }
+      }
     }
   }
   return points
@@ -155,6 +234,35 @@ function dotVec3(first: Vec3, second: Vec3): number {
 
 function distanceVec3(first: Vec3, second: Vec3): number {
   return Math.hypot(first.x - second.x, first.y - second.y, first.z - second.z)
+}
+
+function finiteVec3(value: Vec3): boolean {
+  return Number.isFinite(value.x) && Number.isFinite(value.y) && Number.isFinite(value.z)
+}
+
+function lengthSquared(value: Vec3): number {
+  return value.x * value.x + value.y * value.y + value.z * value.z
+}
+
+function compareAimPoint(
+  origin: Vec3,
+  aimDirection: Vec3,
+  first: Vec3,
+  second: Vec3,
+): number {
+  const firstOffset = subtractVec3(first, origin)
+  const secondOffset = subtractVec3(second, origin)
+  const firstDistance = distanceVec3(origin, first)
+  const secondDistance = distanceVec3(origin, second)
+  const firstCosine = firstDistance <= EPSILON
+    ? Number.NEGATIVE_INFINITY
+    : dotVec3(firstOffset, aimDirection) / firstDistance
+  const secondCosine = secondDistance <= EPSILON
+    ? Number.NEGATIVE_INFINITY
+    : dotVec3(secondOffset, aimDirection) / secondDistance
+  return secondCosine - firstCosine
+    || firstDistance - secondDistance
+    || comparePoint(first, second)
 }
 
 function comparePoint(first: Vec3, second: Vec3): number {

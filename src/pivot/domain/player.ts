@@ -25,6 +25,7 @@ const WIRE_ORIGIN_HEIGHT = 0.6
 const EPSILON = 1e-8
 const WIRE_VISIBILITY_EPSILON = 1e-5
 const WIRE_AIM_ASSIST_COSINE = Math.cos(WIRE_AIM_ASSIST_ANGLE * Math.PI / 180)
+const WIRE_ASSIST_MAX_VISIBILITY_CHECKS = 32
 
 export interface StaticCollider extends Aabb3 {
   wireable: boolean
@@ -167,14 +168,14 @@ function findWireAnchor(world: CollisionWorld, origin: Vec3, aimDirectionValue: 
   if (world.queryWireCandidates === undefined) return null
 
   const aimDirection = normalizeVec3(aimDirectionValue)
-  const visibleCandidates = world
+  const rankedCandidates = world
     .queryWireCandidates(origin, aimDirection, WIRE_RANGE)
     .filter((candidate) => candidate.wireable)
     .map((candidate): RankedWireCandidate | null => {
+      if (!finiteVec3(candidate.point)) return null
       const offset = subtractVec3(candidate.point, origin)
       const distance = lengthVec3(offset)
-      if (distance <= EPSILON || distance > WIRE_RANGE) return null
-      if (!wireCandidateVisible(world, origin, candidate.point, distance)) return null
+      if (!Number.isFinite(distance) || distance <= EPSILON || distance > WIRE_RANGE) return null
       return {
         ...candidate,
         distance,
@@ -183,17 +184,22 @@ function findWireAnchor(world: CollisionWorld, origin: Vec3, aimDirectionValue: 
     })
     .filter((candidate): candidate is RankedWireCandidate => candidate !== null)
 
-  const cone = visibleCandidates
-    .filter((candidate) => candidate.cosine >= WIRE_AIM_ASSIST_COSINE - EPSILON)
-    .sort((first, second) => (
+  const cone = topWireCandidates(
+    rankedCandidates,
+    (candidate) => candidate.cosine >= WIRE_AIM_ASSIST_COSINE - EPSILON,
+    (first, second) => (
       second.cosine - first.cosine
       || first.distance - second.distance
       || compareVec3(first.point, second.point)
-    ))[0]
-  if (cone !== undefined) return cone.point
+    ),
+  )
+  const coneAnchor = firstVisibleWireCandidate(world, origin, cone.candidates)
+  if (coneAnchor !== null) return coneAnchor
+  if (cone.total > WIRE_ASSIST_MAX_VISIBILITY_CHECKS) return null
 
-  const overhead = visibleCandidates
-    .filter((candidate) => {
+  const overhead = topWireCandidates(
+    rankedCandidates,
+    (candidate) => {
       const height = candidate.point.y - origin.y
       const horizontalDistance = Math.hypot(
         candidate.point.x - origin.x,
@@ -202,15 +208,53 @@ function findWireAnchor(world: CollisionWorld, origin: Vec3, aimDirectionValue: 
       return height >= WIRE_OVERHEAD_MIN_HEIGHT - EPSILON
         && horizontalDistance <= WIRE_OVERHEAD_HORIZONTAL_RANGE + EPSILON
         && candidate.distance <= WIRE_OVERHEAD_RANGE + EPSILON
-    })
-    .sort((first, second) => {
+    },
+    (first, second) => {
       const firstHorizontal = Math.hypot(first.point.x - origin.x, first.point.z - origin.z)
       const secondHorizontal = Math.hypot(second.point.x - origin.x, second.point.z - origin.z)
       return firstHorizontal - secondHorizontal
         || first.distance - second.distance
         || compareVec3(first.point, second.point)
-    })[0]
-  return overhead?.point ?? null
+    },
+  )
+  return firstVisibleWireCandidate(world, origin, overhead.candidates)
+}
+
+function topWireCandidates(
+  candidates: readonly RankedWireCandidate[],
+  include: (candidate: RankedWireCandidate) => boolean,
+  compare: (first: RankedWireCandidate, second: RankedWireCandidate) => number,
+): { candidates: RankedWireCandidate[]; total: number } {
+  const top: RankedWireCandidate[] = []
+  let total = 0
+  for (const candidate of candidates) {
+    if (!include(candidate)) continue
+    total += 1
+    const insertionIndex = top.findIndex((entry) => compare(candidate, entry) < 0)
+    if (insertionIndex < 0) {
+      if (top.length < WIRE_ASSIST_MAX_VISIBILITY_CHECKS) top.push(candidate)
+      continue
+    }
+    top.splice(insertionIndex, 0, candidate)
+    if (top.length > WIRE_ASSIST_MAX_VISIBILITY_CHECKS) top.pop()
+  }
+  return { candidates: top, total }
+}
+
+function firstVisibleWireCandidate(
+  world: CollisionWorld,
+  origin: Vec3,
+  candidates: readonly RankedWireCandidate[],
+): Vec3 | null {
+  const count = Math.min(candidates.length, WIRE_ASSIST_MAX_VISIBILITY_CHECKS)
+  for (let index = 0; index < count; index += 1) {
+    const candidate = candidates[index]
+    if (
+      candidate !== undefined
+      && wireCandidateVisible(world, origin, candidate.point, candidate.distance)
+    ) return candidate.point
+  }
+  return null
 }
 
 function wireCandidateVisible(
@@ -392,6 +436,10 @@ function subtractVec3(first: Vec3, second: Vec3): Vec3 {
 
 function distanceVec3(first: Vec3, second: Vec3): number {
   return lengthVec3(subtractVec3(first, second))
+}
+
+function finiteVec3(value: Vec3): boolean {
+  return Number.isFinite(value.x) && Number.isFinite(value.y) && Number.isFinite(value.z)
 }
 
 function compareVec3(first: Vec3, second: Vec3): number {
