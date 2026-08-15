@@ -5,7 +5,7 @@ import type { Ray3 } from './types'
 import type { GameSnapshot } from '../domain/session'
 import { CAPTURE_CUBE_SIZE, CAPTURE_MAX_CELLS } from '../domain/capture'
 import type { CapturePreview } from '../domain/capture'
-import { CELL_SIZE, cellCenter, cellKey } from '../domain/cell-world'
+import { CELL_SIZE, cellCenter } from '../domain/cell-world'
 import type { TerrainCell, TerrainMaterial } from '../domain/cell-world'
 
 const PLAYER_COLOR = 0xffd166
@@ -19,14 +19,16 @@ const MATERIAL_COLORS: Record<TerrainMaterial, number> = {
 }
 
 export function terrainNeedsSync(
-  _previous: readonly TerrainCell[] | null,
-  _next: readonly TerrainCell[],
+  previous: readonly TerrainCell[] | null,
+  next: readonly TerrainCell[],
 ): boolean {
-  return true
+  return previous !== next
 }
 
 export function capturePreviewCellCount(preview: CapturePreview | null): number {
-  return preview === null ? 0 : Math.min(preview.cells.length, CAPTURE_MAX_CELLS)
+  return preview === null || !preview.valid
+    ? 0
+    : Math.min(preview.cells.length, CAPTURE_MAX_CELLS)
 }
 
 export interface PivotScene {
@@ -56,7 +58,7 @@ export function createPivotScene(root: HTMLElement): PivotScene {
   const cellMaterials = new Map<string, THREE.MeshStandardMaterial>()
   const terrainMeshes: THREE.InstancedMesh[] = []
   const cameraCollisionMeshes: THREE.InstancedMesh[] = []
-  let terrainSignature = ''
+  let renderedTerrain: readonly TerrainCell[] | null = null
 
   const previewCube = new THREE.Mesh(
     new THREE.BoxGeometry(CAPTURE_CUBE_SIZE, CAPTURE_CUBE_SIZE, CAPTURE_CUBE_SIZE),
@@ -104,13 +106,13 @@ export function createPivotScene(root: HTMLElement): PivotScene {
   const cameraOffset = new THREE.Vector3()
   const verticalOffset = new THREE.Vector3(0, 1.25, 0)
   const forward = new THREE.Vector3()
+  let preparedSnapshot: GameSnapshot | null = null
+  let preparedYaw = Number.NaN
+  let preparedPitch = Number.NaN
 
   function syncTerrain(terrain: readonly TerrainCell[]): void {
-    const nextSignature = terrain.map((cell) => (
-      `${cellKey(cell.index)}:${cell.material}:${cell.collidable}:${cell.wireable}`
-    )).join('|')
-    if (nextSignature === terrainSignature) return
-    terrainSignature = nextSignature
+    if (!terrainNeedsSync(renderedTerrain, terrain)) return
+    renderedTerrain = terrain
     for (const mesh of terrainMeshes) {
       scene.remove(mesh)
     }
@@ -182,12 +184,26 @@ export function createPivotScene(root: HTMLElement): PivotScene {
     camera.updateMatrixWorld()
   }
 
+  function prepareCamera(snapshot: GameSnapshot, view: BrowserInputState): void {
+    syncTerrain(snapshot.terrain)
+    if (
+      preparedSnapshot === snapshot
+      && preparedYaw === view.yaw
+      && preparedPitch === view.pitch
+    ) return
+    updateCamera(snapshot, view)
+    preparedSnapshot = snapshot
+    preparedYaw = view.yaw
+    preparedPitch = view.pitch
+  }
+
   function resize(): void {
     const width = root.clientWidth
     const height = root.clientHeight
     camera.aspect = width / Math.max(height, 1)
     camera.updateProjectionMatrix()
     renderer.setSize(width, height, false)
+    preparedSnapshot = null
   }
   resize()
 
@@ -195,8 +211,7 @@ export function createPivotScene(root: HTMLElement): PivotScene {
     canvas: renderer.domElement,
     resize,
     getCameraRay(snapshot, view): Ray3 {
-      syncTerrain(snapshot.terrain)
-      updateCamera(snapshot, view)
+      prepareCamera(snapshot, view)
       const direction = new THREE.Vector3()
       const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion)
       const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion)
@@ -212,8 +227,7 @@ export function createPivotScene(root: HTMLElement): PivotScene {
       }
     },
     render(snapshot, view, preview = null): void {
-      syncTerrain(snapshot.terrain)
-      updateCamera(snapshot, view)
+      prepareCamera(snapshot, view)
       const { position } = snapshot.player
       player.position.set(position.x, position.y, position.z)
       if (snapshot.player.wire === null) {
@@ -248,6 +262,8 @@ function updateCapturePreview(
   }
   cube.visible = true
   cube.position.set(preview.cubeCenter.x, preview.cubeCenter.y, preview.cubeCenter.z)
+  const cubeMaterial = cube.material as THREE.MeshBasicMaterial
+  cubeMaterial.color.setHex(preview.valid ? 0x62f4df : 0xff6b6b)
   const basisMatrix = new THREE.Matrix4().makeBasis(
     new THREE.Vector3(preview.basis.right.x, preview.basis.right.y, preview.basis.right.z),
     new THREE.Vector3(preview.basis.up.x, preview.basis.up.y, preview.basis.up.z),
@@ -255,7 +271,7 @@ function updateCapturePreview(
   )
   cube.quaternion.setFromRotationMatrix(basisMatrix)
 
-  selected.count = Math.min(preview.cells.length, CAPTURE_MAX_CELLS)
+  selected.count = capturePreviewCellCount(preview)
   selected.visible = selected.count > 0
   const matrix = new THREE.Matrix4()
   for (let index = 0; index < selected.count; index += 1) {

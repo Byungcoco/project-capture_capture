@@ -3,7 +3,7 @@ import { TICK_SECONDS } from '../../core/constants'
 import { createAabbCollisionWorld } from './aabb-collision-world'
 import { captureCells } from './capture'
 import type { CapturedChunk } from './capture'
-import { createCellCollisionWorld, sortTerrainCells } from './cell-world'
+import { assertValidTerrain, createCellCollisionWorld, sortTerrainCells } from './cell-world'
 import type { TerrainCell } from './cell-world'
 import type { CollisionWorld } from './collision-world'
 import { createPlayerState, stepPlayer } from './player'
@@ -33,26 +33,51 @@ export interface PivotSession {
   usesCellTerrain: boolean
 }
 
-export interface PivotSessionOptions {
+interface PivotSessionBaseOptions {
   player?: PlayerState
+}
+
+export interface TerrainPivotSessionOptions extends PivotSessionBaseOptions {
+  terrain: readonly TerrainCell[]
+  captureStack?: readonly CapturedChunk[]
+  colliders?: never
+  world?: never
+}
+
+export interface LegacyPivotSessionOptions extends PivotSessionBaseOptions {
   colliders?: readonly StaticCollider[]
   world?: CollisionWorld
-  terrain?: readonly TerrainCell[]
-  captureStack?: readonly CapturedChunk[]
+  terrain?: never
+  captureStack?: never
 }
+
+export type PivotSessionOptions = TerrainPivotSessionOptions | LegacyPivotSessionOptions
 
 export function createPivotSession(
   options: PivotSessionOptions = {},
 ): PivotSession {
+  const terrainOption = options.terrain
+  const usesCellTerrain = terrainOption !== undefined
+  if (usesCellTerrain && (options.world !== undefined || options.colliders !== undefined)) {
+    throw new PivotSessionConfigurationError(
+      'terrain 모드에서는 colliders 또는 custom world를 함께 사용할 수 없습니다.',
+    )
+  }
+  if (!usesCellTerrain && options.captureStack !== undefined) {
+    throw new PivotSessionConfigurationError(
+      'capture stack은 terrain 모드에서만 사용할 수 있습니다.',
+    )
+  }
   const authorityColliders = cloneColliders(options.colliders ?? [])
-  const usesCellTerrain = options.terrain !== undefined
   const snapshotColliders = freezeColliders(authorityColliders)
+  const terrain = freezeTerrain(terrainOption ?? [])
+  const captureStack = freezeCaptureStack(options.captureStack ?? [])
   const state: WorldState = {
     tick: 0,
     player: structuredClone(options.player ?? createPlayerState()),
     colliders: authorityColliders,
-    terrain: cloneTerrain(options.terrain ?? []),
-    captureStack: structuredClone(options.captureStack ?? []),
+    terrain,
+    captureStack,
   }
   return {
     state,
@@ -84,8 +109,12 @@ export function stepPivotSession(
         },
       )
     : null
-  const terrain = captureResult?.state.terrain ?? session.state.terrain
-  const captureStack = captureResult?.state.stack ?? session.state.captureStack
+  const terrain = captureResult?.ok
+    ? freezeTerrainReferences(captureResult.state.terrain)
+    : session.state.terrain
+  const captureStack = captureResult?.ok
+    ? freezeCaptureStack(captureResult.state.stack)
+    : session.state.captureStack
   const world = captureResult?.ok
     ? createCellCollisionWorld(terrain)
     : session.world
@@ -122,8 +151,8 @@ function toSnapshot(
     tick: state.tick,
     player: structuredClone(state.player),
     colliders: snapshotColliders,
-    terrain: freezeTerrain(state.terrain),
-    captureStack: freezeCaptureStack(state.captureStack),
+    terrain: state.terrain,
+    captureStack: state.captureStack,
   }
 }
 
@@ -146,15 +175,17 @@ function freezeColliders(
   return Object.freeze(frozen)
 }
 
-function cloneTerrain(terrain: readonly TerrainCell[]): TerrainCell[] {
-  return sortTerrainCells(terrain).map((cell) => structuredClone(cell))
-}
-
 function freezeTerrain(terrain: readonly TerrainCell[]): readonly TerrainCell[] {
-  return Object.freeze(terrain.map((cell) => Object.freeze({
+  assertValidTerrain(terrain)
+  return Object.freeze(sortTerrainCells(terrain).map((cell) => Object.freeze({
     ...cell,
     index: Object.freeze({ ...cell.index }),
   })))
+}
+
+function freezeTerrainReferences(terrain: readonly TerrainCell[]): readonly TerrainCell[] {
+  assertValidTerrain(terrain)
+  return Object.freeze([...terrain])
 }
 
 function freezeCaptureStack(stack: readonly CapturedChunk[]): readonly CapturedChunk[] {

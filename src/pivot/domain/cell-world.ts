@@ -59,6 +59,29 @@ export function sortTerrainCells(cells: readonly TerrainCell[]): TerrainCell[] {
   return [...cells].sort(compareCellIndices)
 }
 
+export function assertValidTerrain(terrain: readonly TerrainCell[]): void {
+  const keys = new Set<string>()
+  for (const cell of terrain) {
+    for (const axis of ['x', 'y', 'z'] as const) {
+      const value = cell.index[axis]
+      if (!Number.isFinite(value) || !Number.isInteger(value)) {
+        throw new TerrainValidationError(
+          'INVALID_CELL_INDEX',
+          `셀 index ${axis}는 유한 정수여야 합니다.`,
+        )
+      }
+    }
+    const key = cellKey(cell.index)
+    if (keys.has(key)) {
+      throw new TerrainValidationError(
+        'DUPLICATE_CELL_KEY',
+        `중복 셀 key를 사용할 수 없습니다: ${key}`,
+      )
+    }
+    keys.add(key)
+  }
+}
+
 export function compareCellIndices(first: TerrainCell, second: TerrainCell): number {
   return first.index.y - second.index.y
     || first.index.z - second.index.z

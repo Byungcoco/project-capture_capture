@@ -1,5 +1,11 @@
 import type { CaptureBasis } from './commands'
-import { CELL_SIZE, cellCenter, cellKey, compareCellIndices } from './cell-world'
+import {
+  CELL_SIZE,
+  assertValidTerrain,
+  cellCenter,
+  cellKey,
+  compareCellIndices,
+} from './cell-world'
 import type { CellIndex, TerrainCell, TerrainMaterial } from './cell-world'
 import { normalizeVec3 } from './math'
 import type { Vec3 } from './math'
@@ -59,26 +65,15 @@ export type CaptureResult =
 export function previewCapture(
   terrain: readonly TerrainCell[],
   request: CaptureRequest,
-  _stack: readonly CapturedChunk[] = [],
+  stack: readonly CapturedChunk[] = [],
 ): CapturePreview | null {
-  const direction = normalizeVec3(request.direction)
-  const target = nearestCollidableCell(terrain, request.origin, direction)
-  if (
-    target === null
-    || target.distance > CAPTURE_RANGE
-    || !target.cell.capturable
-    || !target.cell.destructible
-  ) return null
-  const cubeCenter = {
-    x: request.origin.x + direction.x * target.distance,
-    y: request.origin.y + direction.y * target.distance,
-    z: request.origin.z + direction.z * target.distance,
-  }
+  const plan = planCapture({ terrain, stack }, request)
+  if (plan.cubeCenter === null) return null
   return {
-    valid: true,
-    failureCode: null,
-    cubeCenter,
-    cells: selectCaptureCells(terrain, cubeCenter, request.basis),
+    valid: plan.ok,
+    failureCode: plan.ok ? null : plan.code,
+    cubeCenter: plan.cubeCenter,
+    cells: plan.ok ? plan.cells : [],
     basis: structuredClone(request.basis),
   }
 }
@@ -129,23 +124,10 @@ export function chooseCaptureAnchor(
 }
 
 export function captureCells(state: CaptureState, request: CaptureRequest): CaptureResult {
-  const direction = normalizeVec3(request.direction)
-  const target = nearestCollidableCell(state.terrain, request.origin, direction)
-  if (target === null) return failure(state, 'EMPTY_CAPTURE')
-  if (target.distance > CAPTURE_RANGE) return failure(state, 'OUT_OF_RANGE')
-  if (!target.cell.capturable || !target.cell.destructible) {
-    return failure(state, 'BLOCKED_CAPTURE')
-  }
-  if (state.stack.length >= CAPTURE_STACK_LIMIT) return failure(state, 'STACK_FULL')
-
-  const preview = previewCapture(state.terrain, request)
-  if (preview === null) return failure(state, 'EMPTY_CAPTURE')
-  const { cubeCenter } = preview
-  const selected = preview.cells
-  if (selected.length === 0) return failure(state, 'EMPTY_CAPTURE')
-  if (selected.length > CAPTURE_MAX_CELLS) return failure(state, 'CAPTURE_TOO_LARGE')
-  const anchor = chooseCaptureAnchor(selected, cubeCenter)
-  if (anchor === null) return failure(state, 'EMPTY_CAPTURE')
+  assertValidTerrain(state.terrain)
+  const plan = planCapture(state, request)
+  if (!plan.ok) return failure(state, plan.code)
+  const { anchor, cells: selected } = plan
 
   const selectedKeys = new Set(selected.map((cell) => cellKey(cell.index)))
   const chunk: CapturedChunk = {
@@ -171,6 +153,47 @@ export function captureCells(state: CaptureState, request: CaptureRequest): Capt
       stack: [...state.stack, chunk],
     },
   }
+}
+
+type CapturePlan =
+  | {
+      ok: true
+      cubeCenter: Vec3
+      cells: readonly TerrainCell[]
+      anchor: TerrainCell
+    }
+  | {
+      ok: false
+      code: CaptureFailureCode
+      cubeCenter: Vec3 | null
+    }
+
+function planCapture(state: CaptureState, request: CaptureRequest): CapturePlan {
+  const direction = normalizeVec3(request.direction)
+  const target = nearestCollidableCell(state.terrain, request.origin, direction)
+  if (target === null) return { ok: false, code: 'EMPTY_CAPTURE', cubeCenter: null }
+  if (target.distance > CAPTURE_RANGE) {
+    return { ok: false, code: 'OUT_OF_RANGE', cubeCenter: null }
+  }
+  if (!target.cell.capturable || !target.cell.destructible) {
+    return { ok: false, code: 'BLOCKED_CAPTURE', cubeCenter: null }
+  }
+  const cubeCenter = {
+    x: request.origin.x + direction.x * target.distance,
+    y: request.origin.y + direction.y * target.distance,
+    z: request.origin.z + direction.z * target.distance,
+  }
+  if (state.stack.length >= CAPTURE_STACK_LIMIT) {
+    return { ok: false, code: 'STACK_FULL', cubeCenter }
+  }
+  const selected = selectCaptureCells(state.terrain, cubeCenter, request.basis)
+  if (selected.length === 0) return { ok: false, code: 'EMPTY_CAPTURE', cubeCenter }
+  if (selected.length > CAPTURE_MAX_CELLS) {
+    return { ok: false, code: 'CAPTURE_TOO_LARGE', cubeCenter }
+  }
+  const anchor = chooseCaptureAnchor(selected, cubeCenter)
+  if (anchor === null) return { ok: false, code: 'EMPTY_CAPTURE', cubeCenter }
+  return { ok: true, cubeCenter, cells: selected, anchor }
 }
 
 interface CellRayHit {

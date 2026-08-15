@@ -61,7 +61,7 @@ function frame(timeMilliseconds: number): void {
     origin: previewRay.origin,
     direction: previewRay.direction,
     basis: previewRay.basis,
-  })
+  }, session.snapshot.captureStack)
   scene.render(session.snapshot, input.getState(), preview)
   hud.render(session.snapshot, input.getState().pointerLocked)
   requestAnimationFrame(frame)

@@ -52,7 +52,7 @@ describe('셀 지형 session 통합', () => {
     expect(() => createPivotSession({
       terrain: captureWall(),
       world: emptyWorld(),
-    })).toThrowError(expect.objectContaining({ code: 'INVALID_SESSION_MODE' }))
+    } as never)).toThrowError(expect.objectContaining({ code: 'INVALID_SESSION_MODE' }))
   })
 
   it('변경 없는 큰 terrain tick은 frozen terrain과 stack snapshot 참조를 재사용한다', () => {
@@ -73,7 +73,7 @@ describe('셀 지형 session 통합', () => {
     const sourceStack: CapturedChunk[] = [{
       id: 'source',
       source: 'terrain',
-      captureBasis: CAPTURE_COMMAND.captureBasis,
+      captureBasis: structuredClone(CAPTURE_COMMAND.captureBasis),
       cells: [{
         gridOffset: { x: 0, y: 0, z: 0 },
         material: 'rock',

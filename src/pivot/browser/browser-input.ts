@@ -60,7 +60,9 @@ export function reduceBrowserInput(state: BrowserInputState, _event: BrowserInpu
     }
   }
   if (event.type === 'mouse-down') {
-    return event.button === 2 ? { ...state, captureQueued: true } : state
+    return event.button === 2 && state.pointerLocked
+      ? { ...state, captureQueued: true }
+      : state
   }
 
   const pressedCodes = new Set(state.pressedCodes)
