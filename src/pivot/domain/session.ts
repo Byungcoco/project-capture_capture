@@ -1,6 +1,9 @@
 import type { PlayerCommand } from './commands'
 import { TICK_SECONDS } from '../../core/constants'
 import { createAabbCollisionWorld } from './aabb-collision-world'
+import type { CapturedChunk } from './capture'
+import { sortTerrainCells } from './cell-world'
+import type { TerrainCell } from './cell-world'
 import type { CollisionWorld } from './collision-world'
 import { createPlayerState, stepPlayer } from './player'
 import type { PlayerState, StaticCollider } from './player'
@@ -9,12 +12,16 @@ export interface WorldState {
   tick: number
   player: PlayerState
   colliders: readonly StaticCollider[]
+  terrain: readonly TerrainCell[]
+  captureStack: readonly CapturedChunk[]
 }
 
 export interface GameSnapshot {
   tick: number
   player: PlayerState
   colliders: readonly StaticCollider[]
+  terrain: readonly TerrainCell[]
+  captureStack: readonly CapturedChunk[]
 }
 
 export interface PivotSession {
@@ -28,6 +35,8 @@ export interface PivotSessionOptions {
   player?: PlayerState
   colliders?: readonly StaticCollider[]
   world?: CollisionWorld
+  terrain?: readonly TerrainCell[]
+  captureStack?: readonly CapturedChunk[]
 }
 
 export function createPivotSession(
@@ -39,6 +48,8 @@ export function createPivotSession(
     tick: 0,
     player: structuredClone(options.player ?? createPlayerState()),
     colliders: authorityColliders,
+    terrain: cloneTerrain(options.terrain ?? []),
+    captureStack: structuredClone(options.captureStack ?? []),
   }
   return {
     state,
@@ -73,6 +84,8 @@ function toSnapshot(
     tick: state.tick,
     player: structuredClone(state.player),
     colliders: snapshotColliders,
+    terrain: freezeTerrain(state.terrain),
+    captureStack: structuredClone(state.captureStack),
   }
 }
 
@@ -93,4 +106,15 @@ function freezeColliders(
     wireable: collider.wireable,
   }))
   return Object.freeze(frozen)
+}
+
+function cloneTerrain(terrain: readonly TerrainCell[]): TerrainCell[] {
+  return sortTerrainCells(terrain).map((cell) => structuredClone(cell))
+}
+
+function freezeTerrain(terrain: readonly TerrainCell[]): readonly TerrainCell[] {
+  return Object.freeze(terrain.map((cell) => Object.freeze({
+    ...cell,
+    index: Object.freeze({ ...cell.index }),
+  })))
 }
