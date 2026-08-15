@@ -39,4 +39,10 @@ export interface CollisionWorld {
     aimDirection: Vec3,
     maximumDistance: number,
   ): readonly CollisionWireCandidate[]
+  queryFirstVisibleWireCandidate?(
+    origin: Vec3,
+    orderedCandidates: readonly CollisionWireCandidate[],
+    maximumDistance: number,
+    tolerance: number,
+  ): CollisionWireCandidate | null
 }

@@ -6,12 +6,13 @@ import type {
   CollisionWorld,
 } from './collision-world'
 import { normalizeVec3 } from './math'
-import type { Vec3 } from './math'
+import type { Aabb3, Vec3 } from './math'
 import type { StaticCollider } from './player'
 
 const EPSILON = 1e-8
 
 export function createAabbCollisionWorld(colliders: readonly StaticCollider[]): CollisionWorld {
+  const raycastIndex = buildRaycastBvh(colliders)
   return {
     moveAabb(positionValue, velocityValue, halfSize, stepSeconds): CollisionMoveResult {
       const position = { ...positionValue }
@@ -44,31 +45,7 @@ export function createAabbCollisionWorld(colliders: readonly StaticCollider[]): 
         || maximumDistance < 0
       ) return null
       const direction = normalizeVec3(directionValue)
-      let closest: CollisionRayHit | null = null
-      for (const collider of colliders) {
-        const distance = rayAabbDistance(origin, direction, collider)
-        if (distance === null || !Number.isFinite(distance) || distance > maximumDistance) continue
-        if (
-          closest === null
-          || distance < closest.distance - EPSILON
-          || (
-            Math.abs(distance - closest.distance) <= EPSILON
-            && !collider.wireable
-            && closest.wireable
-          )
-        ) {
-          closest = {
-            distance,
-            wireable: collider.wireable,
-            point: {
-              x: origin.x + direction.x * distance,
-              y: origin.y + direction.y * distance,
-              z: origin.z + direction.z * distance,
-            },
-          }
-        }
-      }
-      return closest
+      return raycastBvh(raycastIndex, origin, direction, maximumDistance)
     },
     queryWireCandidates(origin, aimDirectionValue, maximumDistance): CollisionWireCandidate[] {
       if (
@@ -111,6 +88,28 @@ export function createAabbCollisionWorld(colliders: readonly StaticCollider[]): 
       }
       return candidates
     },
+    queryFirstVisibleWireCandidate(
+      origin,
+      orderedCandidates,
+      maximumDistance,
+      tolerance,
+    ): CollisionWireCandidate | null {
+      if (!finiteVec3(origin) || !Number.isFinite(tolerance) || tolerance < 0) return null
+      for (const candidate of orderedCandidates) {
+        if (!candidate.wireable || !finiteVec3(candidate.point)) continue
+        const offset = subtractVec3(candidate.point, origin)
+        const distance = distanceVec3(origin, candidate.point)
+        if (distance <= EPSILON || distance > maximumDistance + EPSILON) continue
+        const direction = normalizeVec3(offset)
+        const hit = raycastBvh(raycastIndex, origin, direction, distance + tolerance)
+        if (
+          hit !== null
+          && hit.wireable
+          && distanceVec3(hit.point, candidate.point) <= tolerance
+        ) return candidate
+      }
+      return null
+    },
   }
 }
 
@@ -148,7 +147,71 @@ function aabbWireCandidatePoints(
     }
   }
   points.push(...sphereAabbEdgeIntersections(origin, maximumDistance, collider))
+  points.push(...sphereAabbFaceIntersections(
+    origin,
+    aimDirection,
+    maximumDistance,
+    collider,
+  ))
   return points
+}
+
+function sphereAabbFaceIntersections(
+  origin: Vec3,
+  aimDirection: Vec3,
+  radius: number,
+  collider: StaticCollider,
+): Vec3[] {
+  const points: Vec3[] = []
+  for (const faceAxis of ['x', 'y', 'z'] as const) {
+    const tangentAxes = (['x', 'y', 'z'] as const).filter((axis) => axis !== faceAxis)
+    const firstAxis = tangentAxes[0]
+    const secondAxis = tangentAxes[1]
+    if (firstAxis === undefined || secondAxis === undefined) continue
+    for (const side of [-1, 1] as const) {
+      const faceValue = collider.center[faceAxis] + collider.halfSize[faceAxis] * side
+      const faceOffset = faceValue - origin[faceAxis]
+      const circleSquared = radius * radius - faceOffset * faceOffset
+      if (circleSquared < -EPSILON) continue
+      const circleRadius = Math.sqrt(Math.max(0, circleSquared))
+      const tangentLength = Math.hypot(
+        aimDirection[firstAxis],
+        aimDirection[secondAxis],
+      )
+      const directions = tangentLength <= EPSILON
+        ? [
+            { first: -1, second: 0 },
+            { first: 0, second: -1 },
+            { first: 0, second: 1 },
+            { first: 1, second: 0 },
+          ]
+        : [{
+            first: aimDirection[firstAxis] / tangentLength,
+            second: aimDirection[secondAxis] / tangentLength,
+          }]
+      for (const direction of directions) {
+        const firstValue = origin[firstAxis] + direction.first * circleRadius
+        const secondValue = origin[secondAxis] + direction.second * circleRadius
+        if (!withinAabbAxis(firstValue, firstAxis, collider)) continue
+        if (!withinAabbAxis(secondValue, secondAxis, collider)) continue
+        const point = { ...origin }
+        point[faceAxis] = faceValue
+        point[firstAxis] = firstValue
+        point[secondAxis] = secondValue
+        points.push(point)
+      }
+    }
+  }
+  return points
+}
+
+function withinAabbAxis(
+  value: number,
+  axis: keyof Vec3,
+  collider: StaticCollider,
+): boolean {
+  return value >= collider.center[axis] - collider.halfSize[axis] - EPSILON
+    && value <= collider.center[axis] + collider.halfSize[axis] + EPSILON
 }
 
 function sphereAabbEdgeIntersections(
@@ -269,13 +332,132 @@ function comparePoint(first: Vec3, second: Vec3): number {
   return first.x - second.x || first.y - second.y || first.z - second.z
 }
 
+interface RaycastBvhNode {
+  bounds: Aabb3
+  colliders?: readonly StaticCollider[]
+  left?: RaycastBvhNode
+  right?: RaycastBvhNode
+}
+
+const RAYCAST_BVH_LEAF_SIZE = 8
+
+function buildRaycastBvh(colliders: readonly StaticCollider[]): RaycastBvhNode | null {
+  if (colliders.length === 0) return null
+  const bounds = colliderBounds(colliders)
+  if (colliders.length <= RAYCAST_BVH_LEAF_SIZE) return { bounds, colliders: [...colliders] }
+  const axis = longestAxis(bounds.halfSize)
+  const sorted = [...colliders].sort((first, second) => (
+    first.center[axis] - second.center[axis] || compareCollider(first, second)
+  ))
+  const middle = Math.floor(sorted.length / 2)
+  const left = buildRaycastBvh(sorted.slice(0, middle))
+  const right = buildRaycastBvh(sorted.slice(middle))
+  if (left === null || right === null) return { bounds, colliders: sorted }
+  return { bounds, left, right }
+}
+
+function raycastBvh(
+  root: RaycastBvhNode | null,
+  origin: Vec3,
+  direction: Vec3,
+  maximumDistance: number,
+): CollisionRayHit | null {
+  if (root === null) return null
+  let closest: CollisionRayHit | null = null
+  const stack = [root]
+  while (stack.length > 0) {
+    const node = stack.pop()
+    if (node === undefined) continue
+    const nodeDistance = rayAabbDistance(origin, direction, node.bounds)
+    const searchLimit = Math.min(maximumDistance, closest?.distance ?? maximumDistance)
+    if (nodeDistance === null || nodeDistance > searchLimit + EPSILON) continue
+    if (node.colliders !== undefined) {
+      for (const collider of node.colliders) {
+        const distance = rayAabbDistance(origin, direction, collider)
+        if (
+          distance === null
+          || !Number.isFinite(distance)
+          || distance > maximumDistance + EPSILON
+        ) continue
+        if (!shouldReplaceHit(closest, distance, collider.wireable)) continue
+        closest = {
+          distance,
+          wireable: collider.wireable,
+          point: {
+            x: origin.x + direction.x * distance,
+            y: origin.y + direction.y * distance,
+            z: origin.z + direction.z * distance,
+          },
+        }
+      }
+      continue
+    }
+    if (node.left !== undefined) stack.push(node.left)
+    if (node.right !== undefined) stack.push(node.right)
+  }
+  return closest
+}
+
+function shouldReplaceHit(
+  closest: CollisionRayHit | null,
+  distance: number,
+  wireable: boolean,
+): boolean {
+  return closest === null
+    || distance < closest.distance - EPSILON
+    || (
+      Math.abs(distance - closest.distance) <= EPSILON
+      && !wireable
+      && closest.wireable
+    )
+}
+
+function colliderBounds(colliders: readonly StaticCollider[]): Aabb3 {
+  const minimum = { x: Number.POSITIVE_INFINITY, y: Number.POSITIVE_INFINITY, z: Number.POSITIVE_INFINITY }
+  const maximum = { x: Number.NEGATIVE_INFINITY, y: Number.NEGATIVE_INFINITY, z: Number.NEGATIVE_INFINITY }
+  for (const collider of colliders) {
+    for (const axis of ['x', 'y', 'z'] as const) {
+      minimum[axis] = Math.min(minimum[axis], collider.center[axis] - collider.halfSize[axis])
+      maximum[axis] = Math.max(maximum[axis], collider.center[axis] + collider.halfSize[axis])
+    }
+  }
+  return {
+    center: {
+      x: (minimum.x + maximum.x) / 2,
+      y: (minimum.y + maximum.y) / 2,
+      z: (minimum.z + maximum.z) / 2,
+    },
+    halfSize: {
+      x: (maximum.x - minimum.x) / 2,
+      y: (maximum.y - minimum.y) / 2,
+      z: (maximum.z - minimum.z) / 2,
+    },
+  }
+}
+
+function longestAxis(halfSize: Vec3): keyof Vec3 {
+  if (halfSize.y > halfSize.x && halfSize.y >= halfSize.z) return 'y'
+  if (halfSize.z > halfSize.x && halfSize.z > halfSize.y) return 'z'
+  return 'x'
+}
+
+function compareCollider(first: StaticCollider, second: StaticCollider): number {
+  return compareVec3Values(first.center, second.center)
+    || compareVec3Values(first.halfSize, second.halfSize)
+    || Number(first.wireable) - Number(second.wireable)
+}
+
+function compareVec3Values(first: Vec3, second: Vec3): number {
+  return first.x - second.x || first.y - second.y || first.z - second.z
+}
+
 function overlaps(position: Vec3, halfSize: Vec3, collider: StaticCollider): boolean {
   return Math.abs(position.x - collider.center.x) < halfSize.x + collider.halfSize.x
     && Math.abs(position.y - collider.center.y) < halfSize.y + collider.halfSize.y
     && Math.abs(position.z - collider.center.z) < halfSize.z + collider.halfSize.z
 }
 
-function rayAabbDistance(origin: Vec3, direction: Vec3, collider: StaticCollider): number | null {
+function rayAabbDistance(origin: Vec3, direction: Vec3, collider: Aabb3): number | null {
   let minimum = 0
   let maximum = Number.POSITIVE_INFINITY
   for (const axis of ['x', 'y', 'z'] as const) {
