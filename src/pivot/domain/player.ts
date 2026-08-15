@@ -1,4 +1,5 @@
 import type { PlayerCommand } from './commands'
+import type { CollisionWorld } from './collision-world'
 import type { Aabb3, Vec3 } from './math'
 
 export const PLAYER_HALF_SIZE: Readonly<Vec3> = { x: 0.4, y: 0.9, z: 0.4 }
@@ -44,7 +45,7 @@ export function createPlayerState(
 export function stepPlayer(
   state: PlayerState,
   _command: PlayerCommand,
-  _colliders: readonly StaticCollider[],
+  _world: readonly StaticCollider[] | CollisionWorld,
   _stepSeconds: number,
 ): PlayerState {
   return structuredClone(state)
