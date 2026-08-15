@@ -10,6 +10,7 @@ import {
 } from './cell-world'
 import type { TerrainCell } from './cell-world'
 import type { CollisionWorld } from './collision-world'
+import { placeChunk } from './placement'
 import { createPlayerState, stepPlayer } from './player'
 import type { PlayerState, StaticCollider } from './player'
 
@@ -114,13 +115,32 @@ export function stepPivotSession(
         },
       )
     : null
-  const terrain = captureResult?.ok
-    ? freezeTerrain(captureResult.state.terrain)
+  const placementResult = !command.capturePressed
+    && command.placeReleased
+    && session.usesCellTerrain
+    ? placeChunk(
+        {
+          terrain: session.state.terrain,
+          stack: session.state.captureStack,
+        },
+        {
+          origin: command.placementOrigin,
+          direction: command.placementDirection,
+          playerPosition: session.state.player.position,
+          playerHalfSize: session.state.player.halfSize,
+        },
+      )
+    : null
+  const actionState = captureResult?.ok
+    ? captureResult.state
+    : placementResult?.ok ? placementResult.state : null
+  const terrain = actionState !== null
+    ? freezeTerrain(actionState.terrain)
     : session.state.terrain
-  const captureStack = captureResult?.ok
-    ? freezeCaptureStack(captureResult.state.stack)
+  const captureStack = actionState !== null
+    ? freezeCaptureStack(actionState.stack)
     : session.state.captureStack
-  const world = captureResult?.ok
+  const world = actionState !== null
     ? createCellCollisionWorld(terrain)
     : session.world
   const state: WorldState = {

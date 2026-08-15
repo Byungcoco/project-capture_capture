@@ -19,6 +19,8 @@ export interface BrowserInputState {
   jumpQueued: boolean
   dashQueued: boolean
   captureQueued: boolean
+  placeHeld: boolean
+  placeQueued: boolean
   wireEdgeQueue: readonly WireEdge[]
 }
 
@@ -36,6 +38,7 @@ export function createBrowserInputState(): BrowserInputState {
   return {
     pressedCodes: new Set(), yaw: 0, pitch: 0, pointerLocked: false,
     jumpQueued: false, dashQueued: false, captureQueued: false,
+    placeHeld: false, placeQueued: false,
     wireEdgeQueue: [],
   }
 }
@@ -67,10 +70,13 @@ export function reduceBrowserInput(state: BrowserInputState, _event: BrowserInpu
 
   const pressedCodes = new Set(state.pressedCodes)
   if (event.type === 'key-up') {
+    const placeReleased = event.code === 'KeyQ' && state.placeHeld
     pressedCodes.delete(event.code)
     return {
       ...state,
       pressedCodes,
+      placeHeld: event.code === 'KeyQ' ? false : state.placeHeld,
+      placeQueued: state.placeQueued || placeReleased,
       wireEdgeQueue: event.code === 'KeyE'
         ? [...state.wireEdgeQueue, 'release']
         : state.wireEdgeQueue,
@@ -83,6 +89,7 @@ export function reduceBrowserInput(state: BrowserInputState, _event: BrowserInpu
     pressedCodes,
     jumpQueued: state.jumpQueued || event.code === 'Space',
     dashQueued: state.dashQueued || event.code === 'ShiftLeft',
+    placeHeld: state.placeHeld || event.code === 'KeyQ',
     wireEdgeQueue: event.code === 'KeyE'
       ? [...state.wireEdgeQueue, 'press']
       : state.wireEdgeQueue,
@@ -101,6 +108,7 @@ export function sampleBrowserInput(
       jumpQueued: false,
       dashQueued: false,
       captureQueued: false,
+      placeQueued: false,
       wireEdgeQueue: [],
     },
     command: {
@@ -113,10 +121,14 @@ export function sampleBrowserInput(
       dashPressed: state.dashQueued,
       wireEdges: state.wireEdgeQueue,
       capturePressed: state.captureQueued,
+      placeHeld: state.placeHeld,
+      placeReleased: state.placeQueued,
       ...(captureRay === undefined ? {} : {
         captureOrigin: captureRay.origin,
         captureDirection: captureRay.direction,
         captureBasis: captureRay.basis,
+        placementOrigin: captureRay.origin,
+        placementDirection: captureRay.direction,
       }),
     },
   }
@@ -178,6 +190,8 @@ function clearTransientState(state: BrowserInputState): BrowserInputState {
     jumpQueued: false,
     dashQueued: false,
     captureQueued: false,
+    placeHeld: false,
+    placeQueued: false,
     wireEdgeQueue: [...state.wireEdgeQueue, 'release'],
   }
 }
@@ -186,4 +200,5 @@ function isGameKey(code: string): boolean {
   return code === 'KeyW' || code === 'KeyA' || code === 'KeyS'
     || code === 'KeyD' || code === 'KeyE' || code === 'Space'
     || code === 'ShiftLeft'
+    || code === 'KeyQ'
 }

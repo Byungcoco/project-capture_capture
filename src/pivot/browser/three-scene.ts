@@ -34,14 +34,19 @@ export function capturePreviewCellCount(preview: CapturePreview | null): number 
     : Math.min(preview.cells.length, CAPTURE_MAX_CELLS)
 }
 
-export function placementPreviewCellCount(_preview: PlacementPreview | null): number {
-  return 0
+export function placementPreviewCellCount(preview: PlacementPreview | null): number {
+  return preview === null ? 0 : Math.min(preview.cells.length, CAPTURE_MAX_CELLS)
 }
 
 export interface PivotScene {
   canvas: HTMLCanvasElement
   getCameraRay(snapshot: GameSnapshot, view: BrowserInputState): Ray3
-  render(snapshot: GameSnapshot, view: BrowserInputState, preview?: CapturePreview | null): void
+  render(
+    snapshot: GameSnapshot,
+    view: BrowserInputState,
+    capturePreview?: CapturePreview | null,
+    placementPreview?: PlacementPreview | null,
+  ): void
   resize(): void
   dispose(): void
 }
@@ -250,7 +255,7 @@ export function createPivotScene(root: HTMLElement): PivotScene {
         },
       }
     },
-    render(snapshot, view, preview = null): void {
+    render(snapshot, view, capturePreview = null, placementPreview = null): void {
       prepareCamera(snapshot, view)
       const { position } = snapshot.player
       player.position.set(position.x, position.y, position.z)
@@ -267,7 +272,7 @@ export function createPivotScene(root: HTMLElement): PivotScene {
           ),
         ])
       }
-      updateCapturePreview(previewCube, previewCells, preview)
+      updatePreview(previewCube, previewCells, capturePreview, placementPreview)
       renderer.render(scene, camera)
     },
     dispose: disposeScene,
@@ -282,11 +287,22 @@ function disposeMaterial(material: THREE.Material | readonly THREE.Material[]): 
   ;(material as THREE.Material).dispose()
 }
 
-function updateCapturePreview(
+function updatePreview(
   cube: THREE.Mesh,
   selected: THREE.InstancedMesh,
-  preview: CapturePreview | null,
+  capturePreview: CapturePreview | null,
+  placementPreview: PlacementPreview | null,
 ): void {
+  if (placementPreview !== null) {
+    cube.visible = false
+    selected.count = placementPreviewCellCount(placementPreview)
+    selected.visible = selected.count > 0
+    const material = selected.material as THREE.MeshBasicMaterial
+    material.color.setHex(placementPreview.valid ? 0x62f4df : 0xff6b6b)
+    updatePreviewCellMatrices(selected, placementPreview.cells)
+    return
+  }
+  const preview = capturePreview
   if (preview === null) {
     cube.visible = false
     selected.visible = false
@@ -306,9 +322,18 @@ function updateCapturePreview(
 
   selected.count = capturePreviewCellCount(preview)
   selected.visible = selected.count > 0
+  const material = selected.material as THREE.MeshBasicMaterial
+  material.color.setHex(0xffd166)
+  updatePreviewCellMatrices(selected, preview.cells)
+}
+
+function updatePreviewCellMatrices(
+  selected: THREE.InstancedMesh,
+  cells: readonly TerrainCell[],
+): void {
   const matrix = new THREE.Matrix4()
   for (let index = 0; index < selected.count; index += 1) {
-    const cell = preview.cells[index]
+    const cell = cells[index]
     if (cell === undefined) continue
     const center = cellCenter(cell.index)
     matrix.makeTranslation(center.x, center.y, center.z)

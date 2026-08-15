@@ -9,6 +9,7 @@ import { createPivotScene } from './pivot/browser/three-scene'
 import { createPageHideHandler } from './pivot/browser/scene-lifecycle'
 import { MOVEMENT_SPAWN, MOVEMENT_TERRAIN } from './pivot/demo/movement-course'
 import { previewCapture } from './pivot/domain/capture'
+import { previewPlacement } from './pivot/domain/placement'
 import { WIRE_RANGE, createPlayerState, playerWireOrigin } from './pivot/domain/player'
 import { createPivotSession, stepPivotSession } from './pivot/domain/session'
 
@@ -63,8 +64,22 @@ function frame(timeMilliseconds: number): void {
     direction: previewRay.direction,
     basis: previewRay.basis,
   }, session.snapshot.captureStack)
-  scene.render(session.snapshot, input.getState(), preview)
-  hud.render(session.snapshot, input.getState().pointerLocked)
+  const placementPreview = input.getState().placeHeld
+    ? previewPlacement(
+        {
+          terrain: session.snapshot.terrain,
+          stack: session.snapshot.captureStack,
+        },
+        {
+          origin: previewRay.origin,
+          direction: previewRay.direction,
+          playerPosition: session.snapshot.player.position,
+          playerHalfSize: session.snapshot.player.halfSize,
+        },
+      )
+    : null
+  scene.render(session.snapshot, input.getState(), preview, placementPreview)
+  hud.render(session.snapshot, input.getState().pointerLocked, placementPreview)
   requestAnimationFrame(frame)
 }
 
