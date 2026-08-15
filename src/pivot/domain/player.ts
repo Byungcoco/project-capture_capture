@@ -9,6 +9,13 @@ export const JUMP_SPEED = 10
 export const MAX_WIRE_RELEASE_SPEED = 30
 export const WIRE_RELEASE_UP_SPEED = 11
 export const WIRE_SWING_STEERING_ACCELERATION = 12
+export const WIRE_REEL_TAP_TICKS = 12
+export const WIRE_REEL_FLIGHT_SPEED = 18
+export const WIRE_REEL_MIN_FLIGHT_SECONDS = 0.35
+export const WIRE_REEL_MAX_FLIGHT_SECONDS = 1.2
+export const WIRE_REEL_LANDING_CLEARANCE = 0.3
+export const WIRE_REEL_OVERSHOOT = 0.3
+const WIRE_REEL_TOP_PROBE_HEIGHT = 3
 export const GRAVITY = -24
 export const MAX_FALL_SPEED = -30
 export const MOVE_SPEED = 8
@@ -33,6 +40,8 @@ export interface StaticCollider extends Aabb3 {
 export interface WirePullState {
   anchor: Vec3
   ropeLength: number
+  /** 부착 후 경과 tick. 생략하면 0으로 본다. 탭 회수와 홀드 진자를 가르는 유일한 기준이다. */
+  heldTicks?: number
 }
 
 export interface PlayerState {
@@ -43,6 +52,8 @@ export interface PlayerState {
   airJumpsRemaining: number
   dashAvailable: boolean
   dashTicksRemaining: number
+  /** 회수 비행 중에는 공중 감속을 걸지 않는다. 대시와 같은 소비형 카운터다. */
+  reelTicksRemaining: number
   wire: WirePullState | null
 }
 
@@ -55,6 +66,7 @@ export function createPlayerState(overrides: Partial<PlayerState> = {}): PlayerS
     airJumpsRemaining: 1,
     dashAvailable: true,
     dashTicksRemaining: 0,
+    reelTicksRemaining: 0,
     wire: null,
     ...overrides,
   }
@@ -69,13 +81,18 @@ export function stepPlayer(
   const player = structuredClone(state)
   const wasGrounded = player.grounded
   let releasedWire = false
+  let attachedThisTick = false
 
   for (const edge of command.wireEdges) {
     if (edge === 'release') {
       if (player.wire !== null) {
+        if ((player.wire.heldTicks ?? 0) <= WIRE_REEL_TAP_TICKS) {
+          applyReelLaunch(player, player.wire, world, stepSeconds)
+        } else {
+          player.velocity.y = Math.max(player.velocity.y, WIRE_RELEASE_UP_SPEED)
+          player.velocity = clampVec3Length(player.velocity, MAX_WIRE_RELEASE_SPEED)
+        }
         player.wire = null
-        player.velocity.y = Math.max(player.velocity.y, WIRE_RELEASE_UP_SPEED)
-        player.velocity = clampVec3Length(player.velocity, MAX_WIRE_RELEASE_SPEED)
         releasedWire = true
       }
       continue
@@ -87,14 +104,22 @@ export function stepPlayer(
         player.wire = {
           anchor,
           ropeLength: distanceVec3(origin, anchor),
+          heldTicks: 0,
         }
+        attachedThisTick = true
       }
     }
   }
 
+  if (player.wire !== null && command.jumpPressed) {
+    applyReelLaunch(player, player.wire, world, stepSeconds)
+    player.wire = null
+    releasedWire = true
+  }
+
   let jumpedThisTick = false
   if (player.wire !== null) {
-    stepWire(player, command, stepSeconds)
+    stepWire(player, command, stepSeconds, attachedThisTick)
   } else if (!releasedWire) {
     jumpedThisTick = stepMovement(player, command, stepSeconds)
   }
@@ -129,6 +154,7 @@ export function stepPlayer(
     player.airJumpsRemaining = 1
     player.dashAvailable = true
     player.dashTicksRemaining = 0
+    player.reelTicksRemaining = 0
   }
   if (
     player.wire !== null
@@ -272,6 +298,10 @@ function stepMovement(player: PlayerState, command: PlayerCommand, stepSeconds: 
     player.dashTicksRemaining -= 1
     return jumped
   }
+  if (player.reelTicksRemaining > 0) {
+    player.reelTicksRemaining -= 1
+    return jumped
+  }
 
   const input = movementWorldDirection(command)
   const target = { x: input.x * MOVE_SPEED, z: input.z * MOVE_SPEED }
@@ -286,9 +316,73 @@ function stepMovement(player: PlayerState, command: PlayerCommand, stepSeconds: 
   return jumped
 }
 
-function stepWire(player: PlayerState, command: PlayerCommand, stepSeconds: number): void {
+function applyReelLaunch(
+  player: PlayerState,
+  wire: WirePullState,
+  world: CollisionWorld,
+  stepSeconds: number,
+): void {
+  const launch = reelLaunch(player, wire, world)
+  player.velocity = clampVec3Length(launch.velocity, MAX_WIRE_RELEASE_SPEED)
+  player.reelTicksRemaining = Math.max(1, Math.ceil(launch.flightSeconds / stepSeconds))
+}
+
+interface ReelLaunch {
+  velocity: Vec3
+  flightSeconds: number
+}
+
+function reelLaunch(
+  player: PlayerState,
+  wire: WirePullState,
+  world: CollisionWorld,
+): ReelLaunch {
+  const origin = playerWireOrigin(player.position)
+  const landing = anchorTopPoint(world, wire.anchor)
+  const horizontal = { x: landing.x - origin.x, z: landing.z - origin.z }
+  const horizontalDistance = Math.hypot(horizontal.x, horizontal.z)
+  const overshoot = horizontalDistance <= EPSILON
+    ? { x: 0, z: 0 }
+    : {
+        x: horizontal.x / horizontalDistance * WIRE_REEL_OVERSHOOT,
+        z: horizontal.z / horizontalDistance * WIRE_REEL_OVERSHOOT,
+      }
+  const target = {
+    x: landing.x + overshoot.x,
+    y: landing.y + player.halfSize.y + WIRE_ORIGIN_HEIGHT + WIRE_REEL_LANDING_CLEARANCE,
+    z: landing.z + overshoot.z,
+  }
+  const flightSeconds = Math.min(
+    WIRE_REEL_MAX_FLIGHT_SECONDS,
+    Math.max(WIRE_REEL_MIN_FLIGHT_SECONDS, distanceVec3(origin, target) / WIRE_REEL_FLIGHT_SPEED),
+  )
+  return {
+    velocity: {
+      x: (target.x - origin.x) / flightSeconds,
+      y: (target.y - origin.y) / flightSeconds - 0.5 * GRAVITY * flightSeconds,
+      z: (target.z - origin.z) / flightSeconds,
+    },
+    flightSeconds,
+  }
+}
+
+/** anchor 표면이 옆면일 수 있으므로 바로 위에서 아래로 훑어 착지할 상단면을 찾는다. */
+function anchorTopPoint(world: CollisionWorld, anchor: Vec3): Vec3 {
+  const probeOrigin = { x: anchor.x, y: anchor.y + WIRE_REEL_TOP_PROBE_HEIGHT, z: anchor.z }
+  const hit = world.raycast(probeOrigin, { x: 0, y: -1, z: 0 }, WIRE_REEL_TOP_PROBE_HEIGHT)
+  if (hit === null || !Number.isFinite(hit.point.y) || hit.point.y < anchor.y) return anchor
+  return { x: anchor.x, y: hit.point.y, z: anchor.z }
+}
+
+function stepWire(
+  player: PlayerState,
+  command: PlayerCommand,
+  stepSeconds: number,
+  attachedThisTick: boolean,
+): void {
   const wire = player.wire
   if (wire === null) return
+  if (!attachedThisTick) wire.heldTicks = (wire.heldTicks ?? 0) + 1
   const origin = playerWireOrigin(player.position)
   const outward = {
     x: origin.x - wire.anchor.x,

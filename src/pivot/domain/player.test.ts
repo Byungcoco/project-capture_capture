@@ -10,6 +10,7 @@ import type {
 import {
   JUMP_SPEED,
   MAX_WIRE_RELEASE_SPEED,
+  WIRE_REEL_TAP_TICKS,
   WIRE_RELEASE_UP_SPEED,
   WIRE_SWING_STEERING_ACCELERATION,
   createPlayerState,
@@ -300,7 +301,7 @@ describe('피벗 플레이어', () => {
       createPlayerState({
         grounded: false,
         velocity: { x: 20, y: 0, z: 0 },
-        wire: { anchor: { x: 20, y: 4, z: 0 }, ropeLength: 20 },
+        wire: { anchor: { x: 20, y: 4, z: 0 }, ropeLength: 20, heldTicks: WIRE_REEL_TAP_TICKS + 1 },
       }),
       { ...IDLE_PLAYER_COMMAND, wireEdges: ['release'] },
       integratingWorld(),
@@ -699,7 +700,7 @@ describe('피벗 플레이어', () => {
         position: { x: 0, y: 0.9, z: 0 },
         velocity: { x: 8, y: 0, z: 2 },
         grounded: false,
-        wire: { anchor, ropeLength: 1.5 },
+        wire: { anchor, ropeLength: 1.5, heldTicks: WIRE_REEL_TAP_TICKS + 1 },
       }),
       { ...IDLE_PLAYER_COMMAND, wireEdges: ['release'] },
       integratingWorld(),
@@ -727,7 +728,7 @@ describe('피벗 플레이어', () => {
       createPlayerState({
         velocity: { x: 20, y: 15, z: 10 },
         grounded: false,
-        wire: { anchor: { x: 0, y: 10, z: 0 }, ropeLength: 8.5 },
+        wire: { anchor: { x: 0, y: 10, z: 0 }, ropeLength: 8.5, heldTicks: WIRE_REEL_TAP_TICKS + 1 },
       }),
       { ...IDLE_PLAYER_COMMAND, wireEdges: ['release'] },
       integratingWorld(),
@@ -738,6 +739,123 @@ describe('피벗 플레이어', () => {
     expect(released.velocity.y).toBeCloseTo(15 + (-24 * STEP_SECONDS), 10)
     expect(released.velocity.z).toBeCloseTo(10, 10)
     expect(lengthVec3(released.velocity)).toBeLessThanOrEqual(MAX_WIRE_RELEASE_SPEED)
+  })
+
+  it('탭 임계 안의 release는 anchor 상단 위 공간을 지나는 포물선으로 발사한다', () => {
+    const anchor = { x: 10, y: 5, z: 0 }
+    const top = 6
+    let player = stepPlayer(
+      createPlayerState({
+        position: { x: 0, y: 0.9, z: 0 },
+        grounded: false,
+        wire: { anchor, ropeLength: distance({ x: 0, y: 1.5, z: 0 }, anchor), heldTicks: WIRE_REEL_TAP_TICKS },
+      }),
+      { ...IDLE_PLAYER_COMMAND, wireEdges: ['release'] },
+      queryWorld({ point: { x: anchor.x, y: top, z: anchor.z }, distance: 1, wireable: true }),
+      STEP_SECONDS,
+    )
+
+    expect(player.wire).toBeNull()
+    expect(player.velocity.x).toBeGreaterThan(0)
+    expect(player.velocity.y).toBeGreaterThan(0)
+
+    let reachedTop = false
+    let descended = false
+    for (let tick = 0; tick < 150; tick += 1) {
+      player = stepPlayer(player, IDLE_PLAYER_COMMAND, integratingWorld(), STEP_SECONDS)
+      const origin = playerWireOrigin(player.position)
+      const horizontal = Math.hypot(origin.x - anchor.x, origin.z - anchor.z)
+      if (horizontal <= 1 && origin.y >= top + player.halfSize.y + 0.6) reachedTop = true
+      descended ||= player.velocity.y < 0
+    }
+    expect(reachedTop).toBe(true)
+    expect(descended).toBe(true)
+  })
+
+  it('탭 임계를 넘겨 매달린 release는 기존 접선 운동량 릴리스를 유지한다', () => {
+    const released = stepPlayer(
+      createPlayerState({
+        position: { x: 0, y: 0.9, z: 0 },
+        velocity: { x: -8, y: 0, z: 0 },
+        grounded: false,
+        wire: { anchor: { x: 10, y: 5, z: 0 }, ropeLength: 11, heldTicks: WIRE_REEL_TAP_TICKS + 1 },
+      }),
+      { ...IDLE_PLAYER_COMMAND, wireEdges: ['release'] },
+      queryWorld({ point: { x: 10, y: 6, z: 0 }, distance: 1, wireable: true }),
+      STEP_SECONDS,
+    )
+
+    expect(released.wire).toBeNull()
+    expect(released.velocity.x).toBeCloseTo(-8, 10)
+    expect(released.velocity.y).toBeCloseTo(WIRE_RELEASE_UP_SPEED - 24 * STEP_SECONDS, 8)
+  })
+
+  it('press 후 매 tick heldTicks가 늘어 탭 판정이 hold로 넘어간다', () => {
+    let player = pressWire(queryWorld(VALID_WIRE_HIT), { x: 1, y: 0.2, z: 0 })
+    expect(player.wire?.heldTicks).toBe(0)
+
+    for (let tick = 0; tick < 3; tick += 1) {
+      player = stepPlayer(player, IDLE_PLAYER_COMMAND, integratingWorld(), STEP_SECONDS)
+    }
+
+    expect(player.wire?.heldTicks).toBe(3)
+  })
+
+  it('진자 중 점프 입력은 wire를 회수해 anchor 방향으로 발사하고 공중 점프를 쓰지 않는다', () => {
+    const reeled = stepPlayer(
+      createPlayerState({
+        position: { x: 0, y: 0.9, z: 0 },
+        velocity: { x: 0, y: -4, z: 0 },
+        grounded: false,
+        wire: { anchor: { x: 10, y: 5, z: 0 }, ropeLength: 11, heldTicks: 60 },
+      }),
+      { ...IDLE_PLAYER_COMMAND, jumpPressed: true },
+      queryWorld({ point: { x: 10, y: 6, z: 0 }, distance: 1, wireable: true }),
+      STEP_SECONDS,
+    )
+
+    expect(reeled.wire).toBeNull()
+    expect(reeled.velocity.x).toBeGreaterThan(0)
+    expect(reeled.velocity.y).toBeGreaterThan(0)
+    expect(reeled.airJumpsRemaining).toBe(1)
+  })
+
+  it('상단 probe가 실패하면 anchor 자체를 착지 지점으로 써서 그 위를 지난다', () => {
+    const anchor = { x: 0, y: 5, z: 0 }
+    let player = stepPlayer(
+      createPlayerState({
+        position: { x: 0, y: 0.9, z: 0 },
+        grounded: false,
+        wire: { anchor, ropeLength: 3.5, heldTicks: 0 },
+      }),
+      { ...IDLE_PLAYER_COMMAND, wireEdges: ['release'] },
+      integratingWorld(),
+      STEP_SECONDS,
+    )
+
+    expect(player.wire).toBeNull()
+    let maximumOriginY = playerWireOrigin(player.position).y
+    for (let tick = 0; tick < 150; tick += 1) {
+      player = stepPlayer(player, IDLE_PLAYER_COMMAND, integratingWorld(), STEP_SECONDS)
+      maximumOriginY = Math.max(maximumOriginY, playerWireOrigin(player.position).y)
+    }
+    expect(maximumOriginY).toBeGreaterThanOrEqual(anchor.y + player.halfSize.y + 0.6)
+  })
+
+  it('먼 anchor 회수 속도도 총속도 30을 넘지 않는다', () => {
+    const reeled = stepPlayer(
+      createPlayerState({
+        position: { x: 0, y: 0.9, z: 0 },
+        grounded: false,
+        wire: { anchor: { x: 30, y: 20, z: 0 }, ropeLength: 35, heldTicks: 0 },
+      }),
+      { ...IDLE_PLAYER_COMMAND, wireEdges: ['release'] },
+      queryWorld({ point: { x: 30, y: 21, z: 0 }, distance: 1, wireable: true }),
+      STEP_SECONDS,
+    )
+
+    expect(Number.isFinite(lengthVec3(reeled.velocity))).toBe(true)
+    expect(lengthVec3(reeled.velocity)).toBeLessThanOrEqual(MAX_WIRE_RELEASE_SPEED)
   })
 })
 
