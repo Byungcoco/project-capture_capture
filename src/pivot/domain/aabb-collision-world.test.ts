@@ -18,6 +18,43 @@ interface CandidateWorld extends CollisionWorld {
 }
 
 describe('AABB wire assist query', () => {
+  it('생성 뒤 source collider와 배열을 변경해도 raycast move 후보가 같은 snapshot geometry를 사용한다', () => {
+    const collider: StaticCollider = {
+      center: { x: 0, y: 0, z: -5 },
+      halfSize: { x: 1, y: 1, z: 1 },
+      wireable: true,
+    }
+    const source = [collider]
+    const world = createAabbCollisionWorld(source)
+
+    collider.center.x = 5
+    collider.center.z = 0
+    source.splice(0, 1, {
+      center: { x: 10, y: 0, z: 0 },
+      halfSize: { x: 1, y: 1, z: 1 },
+      wireable: false,
+    })
+
+    expect(world.raycast({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 }, 30)?.point.z)
+      .toBeCloseTo(-4)
+    expect(world.raycast({ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, 30)).toBeNull()
+    expect(world.queryWireCandidates?.(
+      { x: 0, y: 0, z: 0 },
+      { x: 0, y: 0, z: -1 },
+      30,
+    )).toContainEqual({ point: { x: 0, y: 0, z: -4 }, wireable: true })
+    expect(world.moveAabb(
+      { x: 0, y: 0, z: 0 },
+      { x: 0, y: 0, z: -5 },
+      { x: 0.5, y: 0.5, z: 0.5 },
+      1,
+    )).toMatchObject({
+      position: { x: 0, y: 0, z: -3.5 },
+      velocity: { x: 0, y: 0, z: 0 },
+      blocked: true,
+    })
+  })
+
   it('결정론적인 collider 표면 후보를 제공한다', () => {
     const collider: StaticCollider = {
       center: { x: 8, y: 2, z: 1 },
@@ -157,6 +194,24 @@ describe('AABB wire assist query', () => {
     ))).toBe(true)
     expect(zeroCandidates.every(({ point }) => pointOnSurface(point, collider))).toBe(true)
   })
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    'batch visibility는 non-finite maximumDistance %s를 거부한다',
+    (maximumDistance) => {
+      const world = createAabbCollisionWorld([{
+        center: { x: 0, y: 0, z: -5 },
+        halfSize: { x: 1, y: 1, z: 1 },
+        wireable: true,
+      }])
+
+      expect(world.queryFirstVisibleWireCandidate?.(
+        { x: 0, y: 0, z: 0 },
+        [{ point: { x: 0, y: 0, z: -4 }, wireable: true }],
+        maximumDistance,
+        1e-5,
+      )).toBeNull()
+    },
+  )
 })
 
 function press(world: CollisionWorld) {
