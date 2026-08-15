@@ -42,6 +42,10 @@ summary: develop-jaehyeok 피벗 런타임의 결정론 상태, 캡처·배치·
 - 카메라 기준 WASD, 점프·더블 점프, 대시와 최대 30m 와이어를 지원한다.
 - wire 입력은 press/release 순서가 보존되는 edge queue다. 로프는 도메인 오브젝트가 아니며 목표와 당김 상태만 시뮬레이션한다.
 - 배치로 terrain이 바뀐 프레임은 action camera ray를 새 world에서 다시 계산해 shoulder camera parallax로 새 셀을 놓치지 않는다.
+- E press의 anchor 선택 우선순위는 직접 wireable 명중, 에임 8도 원뿔 보정, 머리 위 자동 보정 순이다. 머리 위 후보는 wire origin보다 최소 1m 높고 수평 5m·전체 12m 안에 있어야 한다.
+- 보정 후보는 실제 표면점까지의 첫 ray hit가 같은 wireable 표면일 때만 허용하므로 non-wireable 장애물이나 벽 너머에는 붙지 않는다. 동거리에서는 non-wireable 차폐를 우선한다.
+- 후보 선택은 각도·거리·좌표의 안정 순서를 사용한다. 셀/AABB 월드는 BVH 일괄 가시성 조회로 전 후보 의미를 보존하며 큰 지형에서 후보별 전수 raycast를 피한다.
+- collision world는 생성 시 collider 값을 내부 불변 snapshot으로 복사해 move, raycast, assist query와 BVH가 항상 같은 기하를 본다.
 - E press는 현재 wire origin과 hit point의 거리를 로프 길이로 저장한다. 홀드 중 48틱 만료나 앵커 도착으로 자동 회수하지 않는다.
 - 홀드 중 기본 중력 `-24m/s²`와 접평면 WASD 조향 `12m/s²`를 적용한다. 로프 길이를 초과하는 위치와 바깥 radial velocity만 제한하고 접선 운동량은 보존한다.
 - 충돌 권위 이동 뒤 로프 보정으로 벽을 관통하지 않는다. 장력 또는 실제 접선 이동을 막는 비지상 contact에서는 와이어를 종료하며 지면 지지만으로 수평 swing을 끊지 않는다.
@@ -50,7 +54,7 @@ summary: develop-jaehyeok 피벗 런타임의 결정론 상태, 캡처·배치·
 
 ## 검증 상태
 
-- 자동 검증: Vitest 전체 26 files, 120 tests 및 프로덕션 build 통과.
+- 자동 검증: Vitest 전체 27 files, 137 tests 및 프로덕션 build 통과.
 - 브라우저: 초기 3D terrain/player/HUD와 console error 0 확인.
-- 미검증: 인앱 브라우저에서 pointer lock이 활성화되지 않아 실제 캡처, Q 배치와 E 홀드 진자·릴리스 착지 조작감은 수동 플레이테스트가 필요하다.
+- 미검증: 인앱 브라우저에서 pointer lock이 활성화되지 않아 실제 캡처, Q 배치, E 조준 보정·머리 위 자동 연결과 진자·릴리스 착지 조작감은 수동 플레이테스트가 필요하다.
 - 알려진 비기능 경고: Three.js 프로덕션 chunk가 500kB를 초과한다.
