@@ -18,14 +18,20 @@ describe('terrain validation memo', () => {
     expect(validate).toHaveBeenCalledTimes(3)
   })
 
-  it('생성 경계가 표시한 frozen 참조는 첫 hot-path 검증도 생략한다', () => {
-    const validate = vi.fn<(value: readonly number[]) => void>()
-    const memo = createValidationMemo(validate)
-    const frozen = Object.freeze([1, 2, 3])
+  it('신뢰 조건을 만족한 frozen 참조만 hot-path 검증을 생략한다', () => {
+    const validate = vi.fn<(value: readonly object[]) => void>()
+    const memo = createValidationMemo(
+      validate,
+      (value) => Object.isFrozen(value) && value.every(Object.isFrozen),
+    )
+    const shallowFrozen = Object.freeze([{}])
+    const deepFrozen = Object.freeze([Object.freeze({})])
 
-    memo.markValidated(frozen)
-    memo.assert(frozen)
+    memo.assert(shallowFrozen)
+    memo.assert(shallowFrozen)
+    memo.assert(deepFrozen)
+    memo.assert(deepFrozen)
 
-    expect(validate).not.toHaveBeenCalled()
+    expect(validate).toHaveBeenCalledTimes(3)
   })
 })

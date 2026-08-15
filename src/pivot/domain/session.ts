@@ -4,9 +4,8 @@ import { createAabbCollisionWorld } from './aabb-collision-world'
 import { assertValidCaptureStack, captureCells } from './capture'
 import type { CapturedChunk } from './capture'
 import {
-  assertValidTerrain,
+  assertValidTerrainOnce,
   createCellCollisionWorld,
-  markTerrainValidated,
   sortTerrainCells,
 } from './cell-world'
 import type { TerrainCell } from './cell-world'
@@ -116,7 +115,7 @@ export function stepPivotSession(
       )
     : null
   const terrain = captureResult?.ok
-    ? freezeTerrainReferences(captureResult.state.terrain)
+    ? freezeTerrain(captureResult.state.terrain)
     : session.state.terrain
   const captureStack = captureResult?.ok
     ? freezeCaptureStack(captureResult.state.stack)
@@ -182,19 +181,11 @@ function freezeColliders(
 }
 
 function freezeTerrain(terrain: readonly TerrainCell[]): readonly TerrainCell[] {
-  assertValidTerrain(terrain)
   const frozen = Object.freeze(sortTerrainCells(terrain).map((cell) => Object.freeze({
     ...cell,
     index: Object.freeze({ ...cell.index }),
   })))
-  markTerrainValidated(frozen)
-  return frozen
-}
-
-function freezeTerrainReferences(terrain: readonly TerrainCell[]): readonly TerrainCell[] {
-  assertValidTerrain(terrain)
-  const frozen = Object.freeze([...terrain])
-  markTerrainValidated(frozen)
+  assertValidTerrainOnce(frozen)
   return frozen
 }
 

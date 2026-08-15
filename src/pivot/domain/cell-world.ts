@@ -83,14 +83,19 @@ export function assertValidTerrain(terrain: readonly TerrainCell[]): void {
   }
 }
 
-const terrainValidationMemo = createValidationMemo<readonly TerrainCell[]>(assertValidTerrain)
+const terrainValidationMemo = createValidationMemo<readonly TerrainCell[]>(
+  assertValidTerrain,
+  isDeepFrozenTerrain,
+)
 
 export function assertValidTerrainOnce(terrain: readonly TerrainCell[]): void {
   terrainValidationMemo.assert(terrain)
 }
 
-export function markTerrainValidated(terrain: readonly TerrainCell[]): void {
-  terrainValidationMemo.markValidated(terrain)
+function isDeepFrozenTerrain(terrain: readonly TerrainCell[]): boolean {
+  return Object.isFrozen(terrain) && terrain.every((cell) => (
+    Object.isFrozen(cell) && Object.isFrozen(cell.index)
+  ))
 }
 
 export function compareCellIndices(first: TerrainCell, second: TerrainCell): number {
