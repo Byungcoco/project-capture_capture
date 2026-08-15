@@ -1,5 +1,6 @@
 import type { PlayerCommand } from './commands'
 import type { CollisionWorld } from './collision-world'
+import type { CollisionWireCandidate } from './collision-world'
 import { clampVec3Length, lengthVec3, normalizeVec3 } from './math'
 import type { Aabb3, Vec3 } from './math'
 
@@ -16,8 +17,14 @@ export const AIR_ACCELERATION = 16
 export const DASH_SPEED = 18
 export const DASH_TICKS = 9
 export const WIRE_RANGE = 30
+export const WIRE_AIM_ASSIST_ANGLE = 8
+export const WIRE_OVERHEAD_HORIZONTAL_RANGE = 5
+export const WIRE_OVERHEAD_RANGE = 12
+export const WIRE_OVERHEAD_MIN_HEIGHT = 1
 const WIRE_ORIGIN_HEIGHT = 0.6
 const EPSILON = 1e-8
+const WIRE_VISIBILITY_EPSILON = 1e-5
+const WIRE_AIM_ASSIST_COSINE = Math.cos(WIRE_AIM_ASSIST_ANGLE * Math.PI / 180)
 
 export interface StaticCollider extends Aabb3 {
   wireable: boolean
@@ -74,19 +81,12 @@ export function stepPlayer(
       continue
     }
     if (player.wire === null) {
-      const hit = world.raycast(
-        playerWireOrigin(player.position),
-        command.wireAimDirection,
-        WIRE_RANGE,
-      )
-      if (hit !== null && hit.distance <= WIRE_RANGE && hit.wireable) {
+      const origin = playerWireOrigin(player.position)
+      const anchor = findWireAnchor(world, origin, command.wireAimDirection)
+      if (anchor !== null) {
         player.wire = {
-          anchor: hit.point,
-          ropeLength: lengthVec3({
-            x: hit.point.x - playerWireOrigin(player.position).x,
-            y: hit.point.y - playerWireOrigin(player.position).y,
-            z: hit.point.z - playerWireOrigin(player.position).z,
-          }),
+          anchor,
+          ropeLength: distanceVec3(origin, anchor),
         }
       }
     }
@@ -152,6 +152,77 @@ export function stepPlayer(
 
 export function playerWireOrigin(position: Vec3): Vec3 {
   return { x: position.x, y: position.y + WIRE_ORIGIN_HEIGHT, z: position.z }
+}
+
+interface RankedWireCandidate extends CollisionWireCandidate {
+  distance: number
+  cosine: number
+}
+
+function findWireAnchor(world: CollisionWorld, origin: Vec3, aimDirectionValue: Vec3): Vec3 | null {
+  const direct = world.raycast(origin, aimDirectionValue, WIRE_RANGE)
+  if (direct !== null && direct.distance <= WIRE_RANGE && direct.wireable) {
+    return direct.point
+  }
+  if (world.queryWireCandidates === undefined) return null
+
+  const aimDirection = normalizeVec3(aimDirectionValue)
+  const visibleCandidates = world
+    .queryWireCandidates(origin, aimDirection, WIRE_RANGE)
+    .filter((candidate) => candidate.wireable)
+    .map((candidate): RankedWireCandidate | null => {
+      const offset = subtractVec3(candidate.point, origin)
+      const distance = lengthVec3(offset)
+      if (distance <= EPSILON || distance > WIRE_RANGE) return null
+      if (!wireCandidateVisible(world, origin, candidate.point, distance)) return null
+      return {
+        ...candidate,
+        distance,
+        cosine: dotVec3(normalizeVec3(offset), aimDirection),
+      }
+    })
+    .filter((candidate): candidate is RankedWireCandidate => candidate !== null)
+
+  const cone = visibleCandidates
+    .filter((candidate) => candidate.cosine >= WIRE_AIM_ASSIST_COSINE - EPSILON)
+    .sort((first, second) => (
+      second.cosine - first.cosine
+      || first.distance - second.distance
+      || compareVec3(first.point, second.point)
+    ))[0]
+  if (cone !== undefined) return cone.point
+
+  const overhead = visibleCandidates
+    .filter((candidate) => {
+      const height = candidate.point.y - origin.y
+      const horizontalDistance = Math.hypot(
+        candidate.point.x - origin.x,
+        candidate.point.z - origin.z,
+      )
+      return height >= WIRE_OVERHEAD_MIN_HEIGHT - EPSILON
+        && horizontalDistance <= WIRE_OVERHEAD_HORIZONTAL_RANGE + EPSILON
+        && candidate.distance <= WIRE_OVERHEAD_RANGE + EPSILON
+    })
+    .sort((first, second) => {
+      const firstHorizontal = Math.hypot(first.point.x - origin.x, first.point.z - origin.z)
+      const secondHorizontal = Math.hypot(second.point.x - origin.x, second.point.z - origin.z)
+      return firstHorizontal - secondHorizontal
+        || first.distance - second.distance
+        || compareVec3(first.point, second.point)
+    })[0]
+  return overhead?.point ?? null
+}
+
+function wireCandidateVisible(
+  world: CollisionWorld,
+  origin: Vec3,
+  anchor: Vec3,
+  distance: number,
+): boolean {
+  const hit = world.raycast(origin, subtractVec3(anchor, origin), distance + WIRE_VISIBILITY_EPSILON)
+  return hit !== null
+    && hit.wireable
+    && distanceVec3(hit.point, anchor) <= WIRE_VISIBILITY_EPSILON
 }
 
 function stepMovement(player: PlayerState, command: PlayerCommand, stepSeconds: number): boolean {
@@ -313,6 +384,18 @@ function removeOutwardRadialVelocity(velocity: Vec3, radial: Vec3): Vec3 {
 
 function dotVec3(first: Vec3, second: Vec3): number {
   return first.x * second.x + first.y * second.y + first.z * second.z
+}
+
+function subtractVec3(first: Vec3, second: Vec3): Vec3 {
+  return { x: first.x - second.x, y: first.y - second.y, z: first.z - second.z }
+}
+
+function distanceVec3(first: Vec3, second: Vec3): number {
+  return lengthVec3(subtractVec3(first, second))
+}
+
+function compareVec3(first: Vec3, second: Vec3): number {
+  return first.x - second.x || first.y - second.y || first.z - second.z
 }
 
 function dashWorldDirection(command: PlayerCommand): Vec3 {

@@ -21,6 +21,11 @@ export interface CollisionRayHit {
   wireable: boolean
 }
 
+export interface CollisionWireCandidate {
+  point: Vec3
+  wireable: boolean
+}
+
 export interface CollisionWorld {
   moveAabb(
     position: Vec3,
@@ -29,4 +34,9 @@ export interface CollisionWorld {
     stepSeconds: number,
   ): CollisionMoveResult
   raycast(origin: Vec3, direction: Vec3, maximumDistance: number): CollisionRayHit | null
+  queryWireCandidates?(
+    origin: Vec3,
+    aimDirection: Vec3,
+    maximumDistance: number,
+  ): readonly CollisionWireCandidate[]
 }
