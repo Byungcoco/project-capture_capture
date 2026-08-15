@@ -14,7 +14,7 @@ import {
   stepPlayer,
 } from './player'
 import type { PlayerState, StaticCollider } from './player'
-import { speedOf } from './session'
+import { lengthVec3 } from './math'
 import type { Vec3 } from './math'
 
 const STEP_SECONDS = 1 / 60
@@ -137,8 +137,8 @@ describe('피벗 플레이어', () => {
     )
 
     expect(released.wire).toBeNull()
-    expect(speedOf(released.velocity)).toBeGreaterThan(0)
-    expect(speedOf(released.velocity)).toBeLessThanOrEqual(MAX_WIRE_RELEASE_SPEED)
+    expect(lengthVec3(released.velocity)).toBeGreaterThan(0)
+    expect(lengthVec3(released.velocity)).toBeLessThanOrEqual(MAX_WIRE_RELEASE_SPEED)
   })
 
   it('카메라 yaw 기준 로컬 이동과 수직 조준 fallback을 월드 방향으로 바꾼다', () => {

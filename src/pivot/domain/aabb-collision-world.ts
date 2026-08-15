@@ -1,4 +1,9 @@
-import type { CollisionMoveResult, CollisionRayHit, CollisionWorld } from './collision-world'
+import type {
+  CollisionContact,
+  CollisionMoveResult,
+  CollisionRayHit,
+  CollisionWorld,
+} from './collision-world'
 import { normalizeVec3 } from './math'
 import type { Vec3 } from './math'
 import type { StaticCollider } from './player'
@@ -12,6 +17,7 @@ export function createAabbCollisionWorld(colliders: readonly StaticCollider[]): 
       const velocity = { ...velocityValue }
       let grounded = false
       let blocked = false
+      const contacts: CollisionContact[] = []
       for (const axis of ['x', 'y', 'z'] as const) {
         const delta = velocity[axis] * stepSeconds
         position[axis] += delta
@@ -22,10 +28,11 @@ export function createAabbCollisionWorld(colliders: readonly StaticCollider[]): 
             : collider.center[axis] + collider.halfSize[axis] + halfSize[axis]
           velocity[axis] = 0
           blocked = true
+          contacts.push({ axis, normal: delta > 0 ? -1 : 1 })
           if (axis === 'y' && delta < 0) grounded = true
         }
       }
-      return { position, velocity, grounded, blocked, contacts: [] }
+      return { position, velocity, grounded, blocked, contacts }
     },
     raycast(origin, directionValue, maximumDistance): CollisionRayHit | null {
       const direction = normalizeVec3(directionValue)

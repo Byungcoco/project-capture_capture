@@ -67,6 +67,9 @@ export function reduceBrowserInput(state: BrowserInputState, _event: BrowserInpu
       ...state,
       pressedCodes,
       wireReleasedQueued: state.wireReleasedQueued || event.code === 'KeyE',
+      wireEdgeQueue: event.code === 'KeyE'
+        ? [...state.wireEdgeQueue, 'release']
+        : state.wireEdgeQueue,
     }
   }
   pressedCodes.add(event.code)
@@ -77,6 +80,9 @@ export function reduceBrowserInput(state: BrowserInputState, _event: BrowserInpu
     jumpQueued: state.jumpQueued || event.code === 'Space',
     dashQueued: state.dashQueued || event.code === 'ShiftLeft',
     wirePressedQueued: state.wirePressedQueued || event.code === 'KeyE',
+    wireEdgeQueue: event.code === 'KeyE'
+      ? [...state.wireEdgeQueue, 'press']
+      : state.wireEdgeQueue,
   }
 }
 
@@ -153,7 +159,7 @@ function clearTransientState(state: BrowserInputState): BrowserInputState {
     dashQueued: false,
     wirePressedQueued: false,
     wireReleasedQueued: true,
-    wireEdgeQueue: [],
+    wireEdgeQueue: [...state.wireEdgeQueue, 'release'],
   }
 }
 

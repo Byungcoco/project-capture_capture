@@ -68,16 +68,23 @@ export function stepPlayer(
   const wasGrounded = player.grounded
   let releasedWire = false
 
-  if (command.wireReleased) {
-    if (player.wire !== null) {
-      player.wire = null
-      player.velocity = clampVec3Length(player.velocity, MAX_WIRE_RELEASE_SPEED)
-      releasedWire = true
+  const wireEdges = command.wireEdges.length > 0
+    ? command.wireEdges
+    : legacyWireEdges(command)
+  for (const edge of wireEdges) {
+    if (edge === 'release') {
+      if (player.wire !== null) {
+        player.wire = null
+        player.velocity = clampVec3Length(player.velocity, MAX_WIRE_RELEASE_SPEED)
+        releasedWire = true
+      }
+      continue
     }
-  } else if (command.wirePressed && player.wire === null) {
-    const hit = world.raycast(playerWireOrigin(player.position), command.aimDirection, WIRE_RANGE)
-    if (hit !== null && hit.distance <= WIRE_RANGE && hit.wireable) {
-      player.wire = { anchor: hit.point, ticksRemaining: WIRE_TICKS }
+    if (player.wire === null) {
+      const hit = world.raycast(playerWireOrigin(player.position), command.aimDirection, WIRE_RANGE)
+      if (hit !== null && hit.distance <= WIRE_RANGE && hit.wireable) {
+        player.wire = { anchor: hit.point, ticksRemaining: WIRE_TICKS }
+      }
     }
   }
 
@@ -96,6 +103,13 @@ export function stepPlayer(
     )
   }
 
+  const pullDirection = player.wire === null
+    ? null
+    : normalizeVec3({
+        x: player.wire.anchor.x - playerWireOrigin(player.position).x,
+        y: player.wire.anchor.y - playerWireOrigin(player.position).y,
+        z: player.wire.anchor.z - playerWireOrigin(player.position).z,
+      })
   const collision = world.moveAabb(
     player.position,
     player.velocity,
@@ -110,11 +124,26 @@ export function stepPlayer(
     player.dashAvailable = true
     player.dashTicksRemaining = 0
   }
-  if (player.wire !== null && collision.blocked) player.wire = null
+  if (
+    player.wire !== null
+    && pullDirection !== null
+    && collision.contacts.some((contact) => (
+      pullDirection[contact.axis] * contact.normal < -EPSILON
+    ))
+  ) {
+    player.wire = null
+  }
   if (releasedWire) {
     player.velocity = clampVec3Length(player.velocity, MAX_WIRE_RELEASE_SPEED)
   }
   return player
+}
+
+function legacyWireEdges(command: PlayerCommand): readonly ('press' | 'release')[] {
+  if (command.wirePressed && command.wireReleased) return ['press', 'release']
+  if (command.wirePressed) return ['press']
+  if (command.wireReleased) return ['release']
+  return []
 }
 
 export function playerWireOrigin(position: Vec3): Vec3 {
