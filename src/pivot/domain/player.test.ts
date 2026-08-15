@@ -81,7 +81,7 @@ describe('피벗 플레이어', () => {
         {
           ...IDLE_PLAYER_COMMAND,
           moveZ: 1,
-          aimDirection: { x: 1, y: 0, z: 0 },
+          cameraForward: { x: 1, y: 0, z: 0 },
           dashPressed: tick === 0,
         },
         world,
@@ -97,19 +97,31 @@ describe('피벗 플레이어', () => {
     const queriedRanges: number[] = []
     const valid = stepPlayer(
       createPlayerState(),
-      { ...IDLE_PLAYER_COMMAND, aimDirection: { x: 1, y: 0.2, z: 0 }, wirePressed: true },
+      {
+        ...IDLE_PLAYER_COMMAND,
+        wireAimDirection: { x: 1, y: 0.2, z: 0 },
+        wireEdges: ['press'],
+      },
       queryWorld(VALID_WIRE_HIT, queriedRanges),
       STEP_SECONDS,
     )
     const outOfRange = stepPlayer(
       createPlayerState(),
-      { ...IDLE_PLAYER_COMMAND, aimDirection: { x: 1, y: 0, z: 0 }, wirePressed: true },
+      {
+        ...IDLE_PLAYER_COMMAND,
+        wireAimDirection: { x: 1, y: 0, z: 0 },
+        wireEdges: ['press'],
+      },
       queryWorld({ ...VALID_WIRE_HIT, distance: 30.01 }),
       STEP_SECONDS,
     )
     const occluded = stepPlayer(
       createPlayerState(),
-      { ...IDLE_PLAYER_COMMAND, aimDirection: { x: 1, y: 0, z: 0 }, wirePressed: true },
+      {
+        ...IDLE_PLAYER_COMMAND,
+        wireAimDirection: { x: 1, y: 0, z: 0 },
+        wireEdges: ['press'],
+      },
       queryWorld({
         point: { x: 4, y: 1.5, z: 0 },
         distance: 4,
@@ -131,7 +143,7 @@ describe('피벗 플레이어', () => {
         velocity: { x: 40, y: 0, z: 0 },
         wire: { anchor: { x: 20, y: 4, z: 0 }, ticksRemaining: 30 },
       }),
-      { ...IDLE_PLAYER_COMMAND, wireReleased: true },
+      { ...IDLE_PLAYER_COMMAND, wireEdges: ['release'] },
       integratingWorld(),
       STEP_SECONDS,
     )
@@ -144,13 +156,13 @@ describe('피벗 플레이어', () => {
   it('카메라 yaw 기준 로컬 이동과 수직 조준 fallback을 월드 방향으로 바꾼다', () => {
     const yawed = stepPlayer(
       createPlayerState(),
-      { ...IDLE_PLAYER_COMMAND, moveZ: 1, aimDirection: { x: 1, y: 0, z: 0 } },
+      { ...IDLE_PLAYER_COMMAND, moveZ: 1, cameraForward: { x: 1, y: 0, z: 0 } },
       integratingWorld({ grounded: true }),
       STEP_SECONDS,
     )
     const verticalAim = stepPlayer(
       createPlayerState(),
-      { ...IDLE_PLAYER_COMMAND, moveZ: 1, aimDirection: { x: 0, y: 1, z: 0 } },
+      { ...IDLE_PLAYER_COMMAND, moveZ: 1, cameraForward: { x: 0, y: 1, z: 0 } },
       integratingWorld({ grounded: true }),
       STEP_SECONDS,
     )
@@ -219,7 +231,7 @@ describe('피벗 플레이어', () => {
       {
         ...IDLE_PLAYER_COMMAND,
         moveZ: 1,
-        aimDirection: { x: 1, y: 0, z: 0 },
+        cameraForward: { x: 1, y: 0, z: 0 },
         dashPressed: true,
       },
       world,
@@ -234,7 +246,7 @@ describe('피벗 플레이어', () => {
         {
           ...IDLE_PLAYER_COMMAND,
           moveZ: 1,
-          aimDirection: { x: 1, y: 0, z: 0 },
+          cameraForward: { x: 1, y: 0, z: 0 },
           dashPressed: tick === 4,
         },
         world,
@@ -250,7 +262,7 @@ describe('피벗 플레이어', () => {
       {
         ...IDLE_PLAYER_COMMAND,
         moveZ: 1,
-        aimDirection: { x: 1, y: 0, z: 0 },
+        cameraForward: { x: 1, y: 0, z: 0 },
         dashPressed: true,
       },
       world,
@@ -263,7 +275,7 @@ describe('피벗 플레이어', () => {
   it('wire release 다음 press면 새 anchor에 연결한다', () => {
     const command = {
       ...IDLE_PLAYER_COMMAND,
-      aimDirection: { x: 1, y: 0.2, z: 0 },
+      wireAimDirection: { x: 1, y: 0.2, z: 0 },
       wireEdges: ['release', 'press'] as const,
     }
     const player = stepPlayer(
@@ -285,7 +297,7 @@ describe('피벗 플레이어', () => {
       }),
       {
         ...IDLE_PLAYER_COMMAND,
-        aimDirection: { x: 1, y: 0.2, z: 0 },
+        wireAimDirection: { x: 1, y: 0.2, z: 0 },
         wireEdges: ['press', 'release'],
       },
       queryWorld(VALID_WIRE_HIT),
@@ -371,7 +383,7 @@ describe('피벗 플레이어', () => {
     const neutral = stepPlayer(base, IDLE_PLAYER_COMMAND, world, STEP_SECONDS)
     const steered = stepPlayer(
       base,
-      { ...IDLE_PLAYER_COMMAND, moveX: 1, aimDirection: { x: 1, y: 0, z: 0 } },
+      { ...IDLE_PLAYER_COMMAND, moveX: 1, cameraForward: { x: 1, y: 0, z: 0 } },
       world,
       STEP_SECONDS,
     )

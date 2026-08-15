@@ -4,7 +4,7 @@ import type { Vec3 } from '../domain/math'
 
 export interface AimSolution {
   aimPoint: Vec3
-  aimDirection: Vec3
+  wireAimDirection: Vec3
 }
 
 export function solveCameraAim(
@@ -38,7 +38,7 @@ export function solveCameraAim(
     : pointOnPlayerRange(cameraOrigin, direction, playerWireOrigin, maximumDistance)
   return {
     aimPoint,
-    aimDirection: normalizeVec3({
+    wireAimDirection: normalizeVec3({
       x: aimPoint.x - playerWireOrigin.x,
       y: aimPoint.y - playerWireOrigin.y,
       z: aimPoint.z - playerWireOrigin.z,

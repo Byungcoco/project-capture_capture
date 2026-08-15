@@ -20,21 +20,21 @@ describe('카메라 이동 basis와 wire parallax 통합', () => {
         CAMERA_FORWARD,
         PLAYER_WIRE_ORIGIN,
         30,
-      ).aimDirection,
+      ).wireAimDirection,
       solveCameraAim(
         queryWorld(cameraHitAt(-20)),
         CAMERA_ORIGIN,
         CAMERA_FORWARD,
         PLAYER_WIRE_ORIGIN,
         30,
-      ).aimDirection,
+      ).wireAimDirection,
       solveCameraAim(
         queryWorld(null),
         CAMERA_ORIGIN,
         CAMERA_FORWARD,
         PLAYER_WIRE_ORIGIN,
         30,
-      ).aimDirection,
+      ).wireAimDirection,
     ]
 
     const movementDirections = aimDirections.map((wireAimDirection) => {
@@ -43,7 +43,6 @@ describe('카메라 이동 basis와 wire parallax 통합', () => {
         {
           ...IDLE_PLAYER_COMMAND,
           moveZ: 1,
-          aimDirection: wireAimDirection,
           cameraForward: CAMERA_FORWARD,
           wireAimDirection,
         },
@@ -58,7 +57,6 @@ describe('카메라 이동 basis와 wire parallax 통합', () => {
         {
           ...IDLE_PLAYER_COMMAND,
           dashPressed: true,
-          aimDirection: wireAimDirection,
           cameraForward: CAMERA_FORWARD,
           wireAimDirection,
         },

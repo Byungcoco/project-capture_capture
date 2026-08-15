@@ -68,10 +68,7 @@ export function stepPlayer(
   const wasGrounded = player.grounded
   let releasedWire = false
 
-  const wireEdges = command.wireEdges.length > 0
-    ? command.wireEdges
-    : legacyWireEdges(command)
-  for (const edge of wireEdges) {
+  for (const edge of command.wireEdges) {
     if (edge === 'release') {
       if (player.wire !== null) {
         player.wire = null
@@ -81,7 +78,11 @@ export function stepPlayer(
       continue
     }
     if (player.wire === null) {
-      const hit = world.raycast(playerWireOrigin(player.position), command.aimDirection, WIRE_RANGE)
+      const hit = world.raycast(
+        playerWireOrigin(player.position),
+        command.wireAimDirection,
+        WIRE_RANGE,
+      )
       if (hit !== null && hit.distance <= WIRE_RANGE && hit.wireable) {
         player.wire = { anchor: hit.point, ticksRemaining: WIRE_TICKS }
       }
@@ -137,13 +138,6 @@ export function stepPlayer(
     player.velocity = clampVec3Length(player.velocity, MAX_WIRE_RELEASE_SPEED)
   }
   return player
-}
-
-function legacyWireEdges(command: PlayerCommand): readonly ('press' | 'release')[] {
-  if (command.wirePressed && command.wireReleased) return ['press', 'release']
-  if (command.wirePressed) return ['press']
-  if (command.wireReleased) return ['release']
-  return []
 }
 
 export function playerWireOrigin(position: Vec3): Vec3 {
@@ -223,11 +217,11 @@ function dashWorldDirection(command: PlayerCommand): Vec3 {
   if (Math.hypot(command.moveX, command.moveZ) > EPSILON) {
     return movementWorldDirection(command)
   }
-  return cameraBasis(command.aimDirection).forward
+  return cameraBasis(command.cameraForward).forward
 }
 
 function movementWorldDirection(command: PlayerCommand): Vec3 {
-  const basis = cameraBasis(command.aimDirection)
+  const basis = cameraBasis(command.cameraForward)
   return normalizeVec3({
     x: basis.right.x * command.moveX + basis.forward.x * command.moveZ,
     y: 0,
@@ -235,11 +229,11 @@ function movementWorldDirection(command: PlayerCommand): Vec3 {
   })
 }
 
-function cameraBasis(aimDirection: Vec3): { forward: Vec3; right: Vec3 } {
-  const length = Math.hypot(aimDirection.x, aimDirection.z)
+function cameraBasis(cameraForward: Vec3): { forward: Vec3; right: Vec3 } {
+  const length = Math.hypot(cameraForward.x, cameraForward.z)
   const forward = length <= EPSILON
     ? { x: 0, y: 0, z: -1 }
-    : { x: aimDirection.x / length, y: 0, z: aimDirection.z / length }
+    : { x: cameraForward.x / length, y: 0, z: cameraForward.z / length }
   return { forward, right: { x: -forward.z, y: 0, z: forward.x } }
 }
 

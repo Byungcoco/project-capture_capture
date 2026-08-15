@@ -46,7 +46,10 @@ function frame(timeMilliseconds: number): void {
       playerWireOrigin(session.state.player.position),
       WIRE_RANGE,
     )
-    session = stepPivotSession(session, input.sampleCommand(aim.aimDirection))
+    session = stepPivotSession(
+      session,
+      input.sampleCommand(cameraRay.direction, aim.wireAimDirection),
+    )
     if (session.state.player.position.y < -12) session = createSession()
   }
 

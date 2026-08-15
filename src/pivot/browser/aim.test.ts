@@ -15,13 +15,13 @@ describe('피벗 단일 조준 계약', () => {
     )
 
     expect(solution.aimPoint).toEqual(target)
-    expect(solution.aimDirection.x).toBeGreaterThan(0)
-    expect(solution.aimDirection.y).toBeGreaterThan(0)
-    expect(solution.aimDirection.z).toBeLessThan(0)
+    expect(solution.wireAimDirection.x).toBeGreaterThan(0)
+    expect(solution.wireAimDirection.y).toBeGreaterThan(0)
+    expect(solution.wireAimDirection.z).toBeLessThan(0)
     expect(Math.hypot(
-      solution.aimDirection.x,
-      solution.aimDirection.y,
-      solution.aimDirection.z,
+      solution.wireAimDirection.x,
+      solution.wireAimDirection.y,
+      solution.wireAimDirection.z,
     )).toBeCloseTo(1, 10)
   })
 

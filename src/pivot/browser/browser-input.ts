@@ -16,8 +16,6 @@ export interface BrowserInputState {
   pointerLocked: boolean
   jumpQueued: boolean
   dashQueued: boolean
-  wirePressedQueued: boolean
-  wireReleasedQueued: boolean
   wireEdgeQueue: readonly WireEdge[]
 }
 
@@ -27,7 +25,7 @@ export interface BrowserInputSample {
 }
 
 export interface BrowserInput {
-  sampleCommand(aimDirection: Vec3): PlayerCommand
+  sampleCommand(cameraForward: Vec3, wireAimDirection: Vec3): PlayerCommand
   getState(): BrowserInputState
 }
 
@@ -35,7 +33,6 @@ export function createBrowserInputState(): BrowserInputState {
   return {
     pressedCodes: new Set(), yaw: 0, pitch: 0, pointerLocked: false,
     jumpQueued: false, dashQueued: false,
-    wirePressedQueued: false, wireReleasedQueued: false,
     wireEdgeQueue: [],
   }
 }
@@ -66,7 +63,6 @@ export function reduceBrowserInput(state: BrowserInputState, _event: BrowserInpu
     return {
       ...state,
       pressedCodes,
-      wireReleasedQueued: state.wireReleasedQueued || event.code === 'KeyE',
       wireEdgeQueue: event.code === 'KeyE'
         ? [...state.wireEdgeQueue, 'release']
         : state.wireEdgeQueue,
@@ -79,32 +75,32 @@ export function reduceBrowserInput(state: BrowserInputState, _event: BrowserInpu
     pressedCodes,
     jumpQueued: state.jumpQueued || event.code === 'Space',
     dashQueued: state.dashQueued || event.code === 'ShiftLeft',
-    wirePressedQueued: state.wirePressedQueued || event.code === 'KeyE',
     wireEdgeQueue: event.code === 'KeyE'
       ? [...state.wireEdgeQueue, 'press']
       : state.wireEdgeQueue,
   }
 }
 
-export function sampleBrowserInput(state: BrowserInputState, aimDirection: Vec3): BrowserInputSample {
+export function sampleBrowserInput(
+  state: BrowserInputState,
+  cameraForward: Vec3,
+  wireAimDirection: Vec3,
+): BrowserInputSample {
   return {
     state: {
       ...state,
       jumpQueued: false,
       dashQueued: false,
-      wirePressedQueued: false,
-      wireReleasedQueued: false,
       wireEdgeQueue: [],
     },
     command: {
       ...IDLE_PLAYER_COMMAND,
       moveX: Number(state.pressedCodes.has('KeyD')) - Number(state.pressedCodes.has('KeyA')),
       moveZ: Number(state.pressedCodes.has('KeyW')) - Number(state.pressedCodes.has('KeyS')),
-      aimDirection,
+      cameraForward,
+      wireAimDirection,
       jumpPressed: state.jumpQueued,
       dashPressed: state.dashQueued,
-      wirePressed: state.wirePressedQueued,
-      wireReleased: state.wireReleasedQueued,
       wireEdges: state.wireEdgeQueue,
     },
   }
@@ -142,8 +138,8 @@ export function createBrowserInput(canvas: HTMLCanvasElement): BrowserInput {
     })
   })
   return {
-    sampleCommand(aimDirection): PlayerCommand {
-      const sample = sampleBrowserInput(state, aimDirection)
+    sampleCommand(cameraForward, wireAimDirection): PlayerCommand {
+      const sample = sampleBrowserInput(state, cameraForward, wireAimDirection)
       state = sample.state
       return sample.command
     },
@@ -157,8 +153,6 @@ function clearTransientState(state: BrowserInputState): BrowserInputState {
     pressedCodes: new Set(),
     jumpQueued: false,
     dashQueued: false,
-    wirePressedQueued: false,
-    wireReleasedQueued: true,
     wireEdgeQueue: [...state.wireEdgeQueue, 'release'],
   }
 }

@@ -20,8 +20,8 @@ describe('피벗 브라우저 입력 adapter', () => {
     let state = createBrowserInputState()
     state = reduceBrowserInput(state, { type: 'key-down', code: 'KeyE', repeat: false })
     state = reduceBrowserInput(state, { type: 'key-up', code: 'KeyE' })
-    const first = sampleBrowserInput(state, FORWARD)
-    const second = sampleBrowserInput(first.state, FORWARD)
+    const first = sampleBrowserInput(state, FORWARD, FORWARD)
+    const second = sampleBrowserInput(first.state, FORWARD, FORWARD)
 
     expect(first.command.wireEdges).toEqual(['press', 'release'])
     expect(first.command).not.toHaveProperty('wirePressed')
@@ -34,7 +34,7 @@ describe('피벗 브라우저 입력 adapter', () => {
     state = reduceBrowserInput(state, { type: 'key-up', code: 'KeyE' })
     state = reduceBrowserInput(state, { type: 'key-down', code: 'KeyE', repeat: false })
 
-    const sample = sampleBrowserInput(state, FORWARD)
+    const sample = sampleBrowserInput(state, FORWARD, FORWARD)
 
     expect(sample.command.wireEdges).toEqual(['release', 'press'])
   })
@@ -43,17 +43,17 @@ describe('피벗 브라우저 입력 adapter', () => {
     let state = createBrowserInputState()
     state = reduceBrowserInput(state, { type: 'pointer-lock', locked: true })
     state = reduceBrowserInput(state, { type: 'key-down', code: 'KeyW', repeat: false })
-    expect(sampleBrowserInput(state, FORWARD).command.moveZ).toBe(1)
+    expect(sampleBrowserInput(state, FORWARD, FORWARD).command.moveZ).toBe(1)
 
     state = reduceBrowserInput(state, { type: 'pointer-lock', locked: false })
-    expect(sampleBrowserInput(state, FORWARD).command.moveZ).toBe(0)
+    expect(sampleBrowserInput(state, FORWARD, FORWARD).command.moveZ).toBe(0)
 
     state = reduceBrowserInput(state, { type: 'pointer-lock', locked: true })
     state = reduceBrowserInput(state, { type: 'key-down', code: 'KeyD', repeat: false })
-    expect(sampleBrowserInput(state, FORWARD).command.moveX).toBe(1)
+    expect(sampleBrowserInput(state, FORWARD, FORWARD).command.moveX).toBe(1)
 
     state = reduceBrowserInput(state, { type: 'blur' })
-    const blurred = sampleBrowserInput(state, FORWARD).command
+    const blurred = sampleBrowserInput(state, FORWARD, FORWARD).command
     expect(blurred.moveX).toBe(0)
     expect(blurred.moveZ).toBe(0)
   })
