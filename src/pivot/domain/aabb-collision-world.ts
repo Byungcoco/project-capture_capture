@@ -431,7 +431,7 @@ function sweepSphereBvh(
 ): CollisionRayHit | null {
   if (root === null) return null
   const maximumDistance = Math.sqrt(lengthSquared(displacement))
-  const stationary = maximumDistance <= EPSILON
+  const stationary = maximumDistance === 0
   const direction = stationary ? { x: 0, y: 0, z: 0 } : normalizeVec3(displacement)
   let closest: CollisionRayHit | null = null
   const stack = [root]

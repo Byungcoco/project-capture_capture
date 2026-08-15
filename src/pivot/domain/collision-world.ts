@@ -1,6 +1,6 @@
 import type { Aabb3, Vec3 } from './math'
 
-const SPHERE_SWEEP_EPSILON = 1e-8
+const FLOAT_TOLERANCE_FACTOR = 64
 
 export type CollisionAxis = 'x' | 'y' | 'z'
 
@@ -60,12 +60,16 @@ export function sweptSphereAabbDistance(
     return null
   }
   const radiusSquared = radius * radius
-  if (squaredDistanceToAabb(origin, collider) <= radiusSquared + SPHERE_SWEEP_EPSILON) return 0
+  const initialDistanceSquared = squaredDistanceToAabb(origin, collider)
+  if (
+    initialDistanceSquared - radiusSquared
+    <= scaledTolerance(initialDistanceSquared, radiusSquared)
+  ) return 0
   const travelDistance = Math.hypot(displacement.x, displacement.y, displacement.z)
-  if (travelDistance <= SPHERE_SWEEP_EPSILON) return null
+  if (travelDistance === 0) return null
   const breakpoints = [0, 1]
   for (const axis of ['x', 'y', 'z'] as const) {
-    if (Math.abs(displacement[axis]) <= SPHERE_SWEEP_EPSILON) continue
+    if (displacement[axis] === 0) continue
     for (const boundary of [
       collider.center[axis] - collider.halfSize[axis],
       collider.center[axis] + collider.halfSize[axis],
@@ -77,7 +81,7 @@ export function sweptSphereAabbDistance(
   breakpoints.sort((first, second) => first - second)
   const uniqueBreakpoints = breakpoints.filter((value, index) => (
     index === 0
-    || Math.abs(value - (breakpoints[index - 1] ?? value)) > SPHERE_SWEEP_EPSILON
+    || Math.abs(value - (breakpoints[index - 1] ?? value)) > scaledTolerance(value)
   ))
   for (let index = 0; index < uniqueBreakpoints.length - 1; index += 1) {
     const start = uniqueBreakpoints[index] ?? 0
@@ -98,16 +102,43 @@ export function sweptSphereAabbDistance(
       constant += offset * offset
     }
     const startValue = quadratic * start * start + linear * start + constant
-    if (startValue <= SPHERE_SWEEP_EPSILON) return start * travelDistance
-    if (quadratic <= SPHERE_SWEEP_EPSILON) continue
+    const residualTolerance = scaledTolerance(
+      radiusSquared,
+      quadratic,
+      linear,
+      constant,
+      startValue,
+    )
+    if (startValue <= residualTolerance) return start * travelDistance
+    if (quadratic === 0) continue
     const discriminant = linear * linear - 4 * quadratic * constant
-    if (discriminant < -SPHERE_SWEEP_EPSILON) continue
-    const root = (-linear - Math.sqrt(Math.max(0, discriminant))) / (2 * quadratic)
-    if (root >= start - SPHERE_SWEEP_EPSILON && root <= end + SPHERE_SWEEP_EPSILON) {
+    const discriminantTolerance = scaledTolerance(
+      linear * linear,
+      4 * quadratic * constant,
+    )
+    if (discriminant < -discriminantTolerance) continue
+    const squareRoot = Math.sqrt(Math.max(0, discriminant))
+    const stableNumerator = -0.5 * (linear + Math.sign(linear || 1) * squareRoot)
+    const roots = stableNumerator === 0
+      ? [-linear / (2 * quadratic)]
+      : [stableNumerator / quadratic, constant / stableNumerator]
+    roots.sort((first, second) => first - second)
+    const timeTolerance = scaledTolerance(start, end)
+    const root = roots.find((value) => (
+      value >= start - timeTolerance && value <= end + timeTolerance
+    ))
+    if (root !== undefined) {
       return Math.max(start, Math.min(end, root)) * travelDistance
     }
   }
   return null
+}
+
+function scaledTolerance(...values: readonly number[]): number {
+  return Number.EPSILON * FLOAT_TOLERANCE_FACTOR * Math.max(
+    Number.MIN_VALUE,
+    ...values.map((value) => Math.abs(value)),
+  )
 }
 
 function squaredDistanceToAabb(point: Vec3, collider: Aabb3): number {
