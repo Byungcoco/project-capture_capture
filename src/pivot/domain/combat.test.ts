@@ -57,7 +57,7 @@ describe('피벗 기본 슈팅 전투', () => {
 
   it('shot direction은 finite normalized만 허용하고 먼 camera origin은 player 앞 0.6m로 보정한다', () => {
     const base = createCombatSession()
-    const corrected = stepPivotSession(base, shootCommand({ x: 20, y: 0, z: 0 }))
+    const corrected = stepPivotSession(base, shootCommand({ x: 0, y: 0, z: 20 }))
     expect(combat(corrected).projectiles[0]?.position).toEqual({
       x: 0,
       y: 0,
@@ -335,18 +335,72 @@ describe('피벗 기본 슈팅 전투', () => {
 
     expect(combat(session).enemies.map(({ id }) => id)).toEqual(['z', 'ä'])
   })
+
+  it('어깨 카메라 중앙 조준선 위의 enemy는 총구가 옆으로 떨어져 있어도 맞는다', () => {
+    let session = createCombatSession([testEnemy('enemy-on-reticle', { x: 1, y: 0, z: -10 })])
+
+    session = stepPivotSession(session, shootCommand({ x: 1, y: 0, z: 4 }))
+    for (let tick = 0; tick < 20; tick += 1) {
+      session = stepPivotSession(session, IDLE_PLAYER_COMMAND)
+    }
+
+    expect(combat(session).enemies[0]?.hp).toBe(50)
+  })
+
+  it('중앙 조준선이 지형에 맞으면 그 지점으로 수렴해 지형에 막힌다', () => {
+    let session = createCombatSession([], [], [
+      wallCell({ x: 2, y: -1, z: -20 }),
+      wallCell({ x: 2, y: 0, z: -20 }),
+    ])
+
+    session = stepPivotSession(session, shootCommand({ x: 1.25, y: 0, z: 4 }))
+    for (let tick = 0; tick < 20; tick += 1) {
+      session = stepPivotSession(session, IDLE_PLAYER_COMMAND)
+    }
+
+    expect(combat(session).projectiles).toEqual([])
+  })
+
+  it('조준선이 아무것도 맞히지 않으면 카메라 방향을 그대로 유지한다', () => {
+    const session = stepPivotSession(createCombatSession(), shootCommand({ x: 0, y: 0, z: 20 }))
+
+    expect(combat(session).projectiles[0]?.velocity).toEqual({ x: 0, y: 0, z: -50 })
+  })
+
+  it('조준점이 총구보다 뒤에 있으면 역방향으로 쏘지 않는다', () => {
+    const session = stepPivotSession(createCombatSession([], [], [
+      wallCell({ x: -1, y: -1, z: 0 }),
+      wallCell({ x: -1, y: 0, z: 0 }),
+    ]), shootCommand({ x: -0.25, y: 0, z: 4 }, { x: 0, y: 0, z: -1 }))
+    const velocity = combat(session).projectiles[0]?.velocity
+
+    expect(velocity?.z).toBeLessThan(0)
+  })
 })
 
 function createCombatSession(
   enemies: readonly TestEnemy[] = [],
   projectiles: readonly TestProjectile[] = [],
+  terrain: readonly unknown[] = [],
 ) {
   return createPivotSession({
-    terrain: [],
+    terrain,
     enemies,
     projectiles,
     player: createPlayerState({ position: { x: 0, y: 0, z: 0 }, grounded: false }),
   } as unknown as PivotSessionOptions)
+}
+
+function wallCell(index: { x: number; y: number; z: number }) {
+  return {
+    index,
+    material: 'rock',
+    collidable: true,
+    wireable: true,
+    capturable: true,
+    destructible: true,
+    owner: 'level',
+  }
 }
 
 function combat(session: ReturnType<typeof createPivotSession>): CombatSnapshot {

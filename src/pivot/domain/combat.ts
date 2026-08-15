@@ -14,6 +14,9 @@ export const ENEMY_SHOT_SPEED = 10
 export const ENEMY_SHOT_DAMAGE = 15
 export const ENEMY_SHOT_TTL = 300
 export const PROJECTILE_RADIUS = 0.12
+/** 조준선을 푸는 최대 거리. 탄속 × TTL과 같아 조준점 밖은 어차피 탄이 닿지 않는다. */
+export const PLAYER_AIM_RANGE = PLAYER_SHOT_SPEED * PLAYER_SHOT_TTL / 60
+const MIN_AIM_CONVERGENCE_DISTANCE = 1
 export const ENEMY_HALF_SIZE: Readonly<Vec3> = Object.freeze({ x: 0.55, y: 0.75, z: 0.55 })
 
 const MAX_ENTITY_HP = 10_000
@@ -109,12 +112,19 @@ export function stepCombat(state: CombatState, request: CombatStepRequest): Comb
     const origin = distance(request.command.shootOrigin, request.playerPosition) <= 2
       ? { ...request.command.shootOrigin }
       : addScaled(request.playerPosition, shotDirection, 0.6)
+    const aimPoint = resolveAimPoint(
+      request.world,
+      enemies,
+      request.command.shootOrigin,
+      shotDirection,
+    )
+    const muzzleDirection = convergedShotDirection(origin, aimPoint, shotDirection)
     const id = `player-shot-${request.tick}`
     if (!projectileIds.has(id)) projectiles.push({
       id,
       owner: 'player',
       position: origin,
-      velocity: scale(shotDirection, PLAYER_SHOT_SPEED),
+      velocity: scale(muzzleDirection, PLAYER_SHOT_SPEED),
       damage: PLAYER_SHOT_DAMAGE,
       ttl: PLAYER_SHOT_TTL,
       radius: PROJECTILE_RADIUS,
@@ -362,6 +372,42 @@ function finiteNumber(value: unknown): value is number {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
+}
+
+/**
+ * 어깨 카메라는 총구와 떨어져 있어 카메라 방향으로 그대로 쏘면 화면 중앙 조준선과 어긋난다.
+ * 조준선이 실제로 닿는 지점을 찾아 총구에서 그 지점으로 수렴시킨다.
+ */
+function resolveAimPoint(
+  world: CollisionWorld,
+  enemies: readonly EnemyState[],
+  cameraOrigin: Vec3,
+  direction: Vec3,
+): Vec3 {
+  let aimDistance = PLAYER_AIM_RANGE
+  const terrainHit = world.raycast(cameraOrigin, direction, PLAYER_AIM_RANGE)
+  if (terrainHit !== null && Number.isFinite(terrainHit.distance) && terrainHit.distance >= 0) {
+    aimDistance = Math.min(aimDistance, terrainHit.distance)
+  }
+  const displacement = scale(direction, PLAYER_AIM_RANGE)
+  for (const enemy of enemies) {
+    if (!enemy.alive) continue
+    const hitDistance = sweptSphereAabbDistance(cameraOrigin, displacement, 0, {
+      center: enemy.position,
+      halfSize: enemy.halfSize,
+    })
+    if (hitDistance !== null && hitDistance < aimDistance) aimDistance = hitDistance
+  }
+  return addScaled(cameraOrigin, direction, aimDistance)
+}
+
+function convergedShotDirection(origin: Vec3, aimPoint: Vec3, fallback: Vec3): Vec3 {
+  const toAim = subtract(aimPoint, origin)
+  if (length(toAim) < MIN_AIM_CONVERGENCE_DISTANCE) return fallback
+  const converged = normalized(toAim)
+  if (converged === null) return fallback
+  const forward = converged.x * fallback.x + converged.y * fallback.y + converged.z * fallback.z
+  return forward <= 0 ? fallback : converged
 }
 
 function normalized(value: Vec3): Vec3 | null {
