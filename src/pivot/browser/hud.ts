@@ -26,7 +26,7 @@ export function createPivotHud(root: HTMLElement): PivotHud {
   hud.className = 'pivot-hud'
   hud.innerHTML = `
     <div class="pivot-hud__title">PIVOT PROTOTYPE</div>
-    <div class="pivot-hud__controls">클릭 시점 고정 · WASD 이동 · Space 더블 점프 · Shift 대시 · E 와이어 · Q 홀드/릴리스 배치 · LMB FIRE · 오른쪽 클릭 캡처</div>
+    <div class="pivot-hud__controls">클릭 시점 고정 · WASD 이동 · Space 더블 점프 · Shift 대시 · E 홀드 진자 / E 짧게 눌렀다 떼면 회수 · 매달린 중 Space 회수 · Q 홀드/릴리스 배치 · LMB FIRE · 오른쪽 클릭 캡처</div>
     <div class="pivot-hud__status" aria-live="polite"></div>
     <div class="pivot-reticle" aria-hidden="true"></div>
   `
