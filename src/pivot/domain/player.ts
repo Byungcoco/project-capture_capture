@@ -6,6 +6,8 @@ import type { Aabb3, Vec3 } from './math'
 export const PLAYER_HALF_SIZE: Readonly<Vec3> = { x: 0.4, y: 0.9, z: 0.4 }
 export const JUMP_SPEED = 10
 export const MAX_WIRE_RELEASE_SPEED = 30
+export const WIRE_RELEASE_UP_SPEED = 11
+export const WIRE_SWING_STEERING_ACCELERATION = 12
 export const GRAVITY = -24
 export const MAX_FALL_SPEED = -30
 export const MOVE_SPEED = 8
@@ -31,6 +33,7 @@ export interface StaticCollider extends Aabb3 {
 export interface WirePullState {
   anchor: Vec3
   ticksRemaining: number
+  ropeLength?: number
 }
 
 export interface PlayerState {

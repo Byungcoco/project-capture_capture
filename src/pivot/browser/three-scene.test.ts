@@ -8,6 +8,7 @@ import {
   capturePreviewCellCount,
   placementPreviewCellCount,
   terrainNeedsSync,
+  wireShouldBeVisible,
 } from './three-scene'
 import * as threeScene from './three-scene'
 
@@ -121,5 +122,13 @@ describe('피벗 terrain renderer cache', () => {
     expect(selected.count).toBe(1)
     expect((selected.material as THREE.MeshBasicMaterial).color.getHex()).toBe(0xff6b6b)
     expect(position.toArray()).toEqual([1.25, 1.75, 2.25])
+  })
+
+  it('wire line은 hold snapshot에는 보이고 release snapshot부터 숨는다', () => {
+    expect(wireShouldBeVisible({
+      anchor: { x: 3, y: 4, z: 5 },
+      ropeLength: 8,
+    } as never)).toBe(true)
+    expect(wireShouldBeVisible(null)).toBe(false)
   })
 })

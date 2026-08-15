@@ -10,7 +10,10 @@ import type {
 import {
   JUMP_SPEED,
   MAX_WIRE_RELEASE_SPEED,
+  WIRE_RELEASE_UP_SPEED,
+  WIRE_SWING_STEERING_ACCELERATION,
   createPlayerState,
+  playerWireOrigin,
   stepPlayer,
 } from './player'
 import type { PlayerState, StaticCollider } from './player'
@@ -131,6 +134,7 @@ describe('피벗 플레이어', () => {
     )
 
     expect(valid.wire).not.toBeNull()
+    expect(valid.wire?.ropeLength).toBeCloseTo(Math.hypot(12, 2.5), 10)
     expect(queriedRanges).toEqual([30])
     expect(outOfRange.wire).toBeNull()
     expect(occluded.wire).toBeNull()
@@ -141,7 +145,7 @@ describe('피벗 플레이어', () => {
       createPlayerState({
         grounded: false,
         velocity: { x: 40, y: 0, z: 0 },
-        wire: { anchor: { x: 20, y: 4, z: 0 }, ticksRemaining: 30 },
+        wire: { anchor: { x: 20, y: 4, z: 0 }, ropeLength: 20 },
       }),
       { ...IDLE_PLAYER_COMMAND, wireEdges: ['release'] },
       integratingWorld(),
@@ -149,7 +153,8 @@ describe('피벗 플레이어', () => {
     )
 
     expect(released.wire).toBeNull()
-    expect(lengthVec3(released.velocity)).toBeGreaterThan(0)
+    expect(released.velocity.x).toBeGreaterThan(0)
+    expect(released.velocity.y).toBeGreaterThan(10)
     expect(lengthVec3(released.velocity)).toBeLessThanOrEqual(MAX_WIRE_RELEASE_SPEED)
   })
 
@@ -280,7 +285,7 @@ describe('피벗 플레이어', () => {
     }
     const player = stepPlayer(
       createPlayerState({
-        wire: { anchor: { x: -5, y: 3, z: 0 }, ticksRemaining: 20 },
+        wire: { anchor: { x: -5, y: 3, z: 0 }, ropeLength: 5 },
       }),
       command,
       queryWorld(VALID_WIRE_HIT),
@@ -293,7 +298,7 @@ describe('피벗 플레이어', () => {
   it('wire press 다음 release면 최종 상태는 해제다', () => {
     const player = stepPlayer(
       createPlayerState({
-        wire: { anchor: { x: -5, y: 3, z: 0 }, ticksRemaining: 20 },
+        wire: { anchor: { x: -5, y: 3, z: 0 }, ropeLength: 5 },
       }),
       {
         ...IDLE_PLAYER_COMMAND,
@@ -307,32 +312,32 @@ describe('피벗 플레이어', () => {
     expect(player.wire).toBeNull()
   })
 
-  it('와이어는 47번째 tick까지 유지되고 정확히 48번째 tick에 끝난다', () => {
-    let player = createPlayerState({
-      grounded: false,
-      wire: { anchor: { x: 100, y: 20, z: 0 }, ticksRemaining: 48 },
-    })
-    const world = integratingWorld()
-    for (let tick = 0; tick < 47; tick += 1) {
-      player = stepPlayer(player, IDLE_PLAYER_COMMAND, world, STEP_SECONDS)
+  it('E hold 중 wire는 48 tick과 arrival radius로 자동 회수되지 않는다', () => {
+    let far = stepPlayer(
+      createPlayerState({ grounded: false }),
+      {
+        ...IDLE_PLAYER_COMMAND,
+        wireAimDirection: { x: 1, y: 0, z: 0 },
+        wireEdges: ['press'],
+      },
+      queryWorld(VALID_WIRE_HIT),
+      STEP_SECONDS,
+    )
+    for (let tick = 0; tick < 60; tick += 1) {
+      far = stepPlayer(far, IDLE_PLAYER_COMMAND, integratingWorld(), STEP_SECONDS)
     }
-    expect(player.wire?.ticksRemaining).toBe(1)
-
-    player = stepPlayer(player, IDLE_PLAYER_COMMAND, world, STEP_SECONDS)
-    expect(player.wire).toBeNull()
-  })
-
-  it('와이어는 권위 origin에서 anchor가 1미터 이내면 끝난다', () => {
-    const player = stepPlayer(
+    const near = stepPlayer(
       createPlayerState({
-        wire: { anchor: { x: 0.8, y: 1.5, z: 0 }, ticksRemaining: 30 },
+        grounded: false,
+        wire: { anchor: { x: 0.8, y: 1.5, z: 0 }, ropeLength: 0.8 },
       }),
       IDLE_PLAYER_COMMAND,
       integratingWorld(),
       STEP_SECONDS,
     )
 
-    expect(player.wire).toBeNull()
+    expect(far.wire).not.toBeNull()
+    expect(near.wire).not.toBeNull()
   })
 
   it('와이어는 수평과 수직을 포함한 모든 이동 차단에서 끝난다', () => {
@@ -344,7 +349,7 @@ describe('피벗 플레이어', () => {
     const player = stepPlayer(
       createPlayerState({
         grounded: false,
-        wire: { anchor: { x: 0, y: 20, z: 0 }, ticksRemaining: 30 },
+        wire: { anchor: { x: 0, y: 20, z: 0 }, ropeLength: 18.5 },
       }),
       IDLE_PLAYER_COMMAND,
       verticallyBlocked,
@@ -362,7 +367,7 @@ describe('피벗 플레이어', () => {
     }
     const player = stepPlayer(
       createPlayerState({
-        wire: { anchor: { x: 12, y: 1.5, z: 0 }, ticksRemaining: 30 },
+        wire: { anchor: { x: 12, y: 1.5, z: 0 }, ropeLength: 12 },
       }),
       IDLE_PLAYER_COMMAND,
       createAabbCollisionWorld([ground]),
@@ -377,7 +382,7 @@ describe('피벗 플레이어', () => {
   it('와이어 당김 중 카메라 로컬 횡조향을 적용한다', () => {
     const base = createPlayerState({
       grounded: false,
-      wire: { anchor: { x: 12, y: 4, z: 0 }, ticksRemaining: 30 },
+      wire: { anchor: { x: 12, y: 4, z: 0 }, ropeLength: Math.hypot(12, 2.5) },
     })
     const world = integratingWorld()
     const neutral = stepPlayer(base, IDLE_PLAYER_COMMAND, world, STEP_SECONDS)
@@ -389,6 +394,126 @@ describe('피벗 플레이어', () => {
     )
 
     expect(steered.velocity.z).toBeGreaterThan(neutral.velocity.z)
+  })
+
+  it('wire 중력과 WASD 조향은 rope 접평면에서 감쇠 없이 가속한다', () => {
+    const anchor = { x: 0, y: 10, z: 0 }
+    const position = { x: 5, y: 4.4, z: 0 }
+    const ropeLength = Math.hypot(5, -5)
+    const base = createPlayerState({
+      position,
+      velocity: { x: 0, y: 0, z: 0 },
+      grounded: false,
+      wire: { anchor, ropeLength },
+    })
+    const neutral = stepPlayer(base, IDLE_PLAYER_COMMAND, integratingWorld(), STEP_SECONDS)
+    const steered = stepPlayer(
+      base,
+      { ...IDLE_PLAYER_COMMAND, moveX: 1 },
+      integratingWorld(),
+      STEP_SECONDS,
+    )
+    const radial = normalizeFrom(anchor, playerWireOrigin(position))
+
+    expect(neutral.velocity.x).toBeLessThan(0)
+    expect(neutral.velocity.y).toBeLessThan(0)
+    expect(dot(neutral.velocity, radial)).toBeCloseTo(0, 8)
+    expect(steered.velocity.z - neutral.velocity.z).toBeCloseTo(
+      WIRE_SWING_STEERING_ACCELERATION * STEP_SECONDS,
+      8,
+    )
+  })
+
+  it('rope 장력은 바깥 radial 속도만 제거하고 inward와 tangent는 보존한다', () => {
+    const anchor = { x: 0, y: 1.5, z: 0 }
+    const outward = stepPlayer(
+      createPlayerState({
+        position: { x: 10, y: 0.9, z: 0 },
+        velocity: { x: 5, y: 0, z: 3 },
+        grounded: false,
+        wire: { anchor, ropeLength: 10 },
+      }),
+      IDLE_PLAYER_COMMAND,
+      integratingWorld(),
+      STEP_SECONDS,
+    )
+    const inward = stepPlayer(
+      createPlayerState({
+        position: { x: 9, y: 0.9, z: 0 },
+        velocity: { x: -5, y: 0, z: 3 },
+        grounded: false,
+        wire: { anchor, ropeLength: 10 },
+      }),
+      IDLE_PLAYER_COMMAND,
+      integratingWorld(),
+      STEP_SECONDS,
+    )
+
+    expect(outward.velocity.x).toBeCloseTo(0, 8)
+    expect(outward.velocity.z).toBeCloseTo(3, 8)
+    expect(inward.velocity.x).toBeCloseTo(-5, 8)
+    expect(inward.velocity.z).toBeCloseTo(3, 8)
+  })
+
+  it('60Hz 여러 tick 동안 wire origin은 ropeLength 바깥으로 벗어나지 않는다', () => {
+    const anchor = { x: 0, y: 8, z: 0 }
+    let player = createPlayerState({
+      position: { x: 6, y: 7.4, z: 0 },
+      velocity: { x: 0, y: 0, z: 8 },
+      grounded: false,
+      wire: { anchor, ropeLength: 6 },
+    })
+    for (let tick = 0; tick < 180; tick += 1) {
+      player = stepPlayer(player, IDLE_PLAYER_COMMAND, integratingWorld(), STEP_SECONDS)
+      expect(distance(playerWireOrigin(player.position), anchor)).toBeLessThanOrEqual(6 + 1e-8)
+      expect(player.wire).not.toBeNull()
+    }
+  })
+
+  it('release는 수평 운동량을 보존해 상향 포물선으로 anchor 위를 지난 뒤 하강한다', () => {
+    const anchor = { x: 0, y: 3, z: 0 }
+    let player = stepPlayer(
+      createPlayerState({
+        position: { x: 0, y: 0.9, z: 0 },
+        velocity: { x: 8, y: 0, z: 2 },
+        grounded: false,
+        wire: { anchor, ropeLength: 1.5 },
+      }),
+      { ...IDLE_PLAYER_COMMAND, wireEdges: ['release'] },
+      integratingWorld(),
+      STEP_SECONDS,
+    )
+    expect(player.wire).toBeNull()
+    expect(player.velocity.x).toBeGreaterThan(0)
+    expect(player.velocity.z).toBeGreaterThan(0)
+    expect(player.velocity.y).toBeCloseTo(WIRE_RELEASE_UP_SPEED - 24 / 60, 8)
+
+    let maximumOriginY = playerWireOrigin(player.position).y
+    let descended = false
+    for (let tick = 0; tick < 90; tick += 1) {
+      player = stepPlayer(player, IDLE_PLAYER_COMMAND, integratingWorld(), STEP_SECONDS)
+      maximumOriginY = Math.max(maximumOriginY, playerWireOrigin(player.position).y)
+      descended ||= player.velocity.y < 0
+      expect(player.wire).toBeNull()
+    }
+    expect(maximumOriginY).toBeGreaterThan(anchor.y)
+    expect(descended).toBe(true)
+  })
+
+  it('release는 더 큰 양의 y를 낮추지 않고 총속도 30을 넘지 않는다', () => {
+    const released = stepPlayer(
+      createPlayerState({
+        velocity: { x: 20, y: 15, z: 10 },
+        grounded: false,
+        wire: { anchor: { x: 0, y: 10, z: 0 }, ropeLength: 8.5 },
+      }),
+      { ...IDLE_PLAYER_COMMAND, wireEdges: ['release'] },
+      integratingWorld(),
+      STEP_SECONDS,
+    )
+
+    expect(released.velocity.y).toBeGreaterThan(WIRE_RELEASE_UP_SPEED)
+    expect(lengthVec3(released.velocity)).toBeLessThanOrEqual(MAX_WIRE_RELEASE_SPEED)
   })
 })
 
@@ -434,4 +559,21 @@ function queryWorld(hit: CollisionRayHit | null, ranges?: number[]): CollisionWo
       return hit
     },
   }
+}
+
+function distance(first: Vec3, second: Vec3): number {
+  return Math.hypot(first.x - second.x, first.y - second.y, first.z - second.z)
+}
+
+function normalizeFrom(origin: Vec3, target: Vec3): Vec3 {
+  const length = distance(origin, target)
+  return {
+    x: (target.x - origin.x) / length,
+    y: (target.y - origin.y) / length,
+    z: (target.z - origin.z) / length,
+  }
+}
+
+function dot(first: Vec3, second: Vec3): number {
+  return first.x * second.x + first.y * second.y + first.z * second.z
 }

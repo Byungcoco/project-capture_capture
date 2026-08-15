@@ -38,6 +38,10 @@ export function placementPreviewCellCount(preview: PlacementPreview | null): num
   return preview === null ? 0 : Math.min(preview.cells.length, CAPTURE_MAX_CELLS)
 }
 
+export function wireShouldBeVisible(_wire: GameSnapshot['player']['wire']): boolean {
+  return false
+}
+
 export interface PivotScene {
   canvas: HTMLCanvasElement
   getCameraRay(snapshot: GameSnapshot, view: BrowserInputState): Ray3
