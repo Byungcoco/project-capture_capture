@@ -20,6 +20,10 @@ export interface PlayerCommand {
   captureOrigin: Vec3
   captureDirection: Vec3
   captureBasis: CaptureBasis
+  placeHeld: boolean
+  placeReleased: boolean
+  placementOrigin: Vec3
+  placementDirection: Vec3
 }
 
 export const IDLE_PLAYER_COMMAND: PlayerCommand = {
@@ -38,4 +42,8 @@ export const IDLE_PLAYER_COMMAND: PlayerCommand = {
     up: { x: 0, y: 1, z: 0 },
     forward: { x: 0, y: 0, z: -1 },
   },
+  placeHeld: false,
+  placeReleased: false,
+  placementOrigin: { x: 0, y: 0, z: 0 },
+  placementDirection: { x: 0, y: 0, z: -1 },
 }

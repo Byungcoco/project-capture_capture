@@ -93,4 +93,39 @@ describe('피벗 브라우저 입력 adapter', () => {
     state = reduceBrowserInput(state, { type: 'blur' })
     expect(sampleBrowserInput(state, FORWARD, FORWARD).command.capturePressed).toBe(false)
   })
+
+  it('Q hold와 단일 release edge를 내보내고 key repeat는 transaction을 늘리지 않는다', () => {
+    let state = createBrowserInputState()
+    state = reduceBrowserInput(state, { type: 'pointer-lock', locked: true })
+    state = reduceBrowserInput(state, { type: 'key-down', code: 'KeyQ', repeat: false })
+    state = reduceBrowserInput(state, { type: 'key-down', code: 'KeyQ', repeat: true })
+
+    const held = sampleBrowserInput(state, FORWARD, FORWARD)
+    expect(held.command.placeHeld).toBe(true)
+    expect(held.command.placeReleased).toBe(false)
+
+    state = reduceBrowserInput(held.state, { type: 'key-up', code: 'KeyQ' })
+    const released = sampleBrowserInput(state, FORWARD, FORWARD)
+    const consumed = sampleBrowserInput(released.state, FORWARD, FORWARD)
+    expect(released.command.placeHeld).toBe(false)
+    expect(released.command.placeReleased).toBe(true)
+    expect(consumed.command.placeReleased).toBe(false)
+  })
+
+  it('Q hold와 release queue는 pointer unlock 및 blur에서 사라진다', () => {
+    for (const clearEvent of [
+      { type: 'pointer-lock', locked: false } as const,
+      { type: 'blur' } as const,
+    ]) {
+      let state = createBrowserInputState()
+      state = reduceBrowserInput(state, { type: 'pointer-lock', locked: true })
+      state = reduceBrowserInput(state, { type: 'key-down', code: 'KeyQ', repeat: false })
+      state = reduceBrowserInput(state, { type: 'key-up', code: 'KeyQ' })
+      state = reduceBrowserInput(state, clearEvent)
+
+      const sample = sampleBrowserInput(state, FORWARD, FORWARD)
+      expect(sample.command.placeHeld).toBe(false)
+      expect(sample.command.placeReleased).toBe(false)
+    }
+  })
 })

@@ -1,4 +1,9 @@
 import type { GameSnapshot } from '../domain/session'
+import type { PlacementPreview } from '../domain/placement'
+
+export function placementFailureLabel(_preview: PlacementPreview | null): string | null {
+  return null
+}
 
 export interface PivotHud {
   render(snapshot: GameSnapshot, pointerLocked: boolean): void

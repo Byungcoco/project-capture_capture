@@ -5,6 +5,7 @@ import type { Ray3 } from './types'
 import type { GameSnapshot } from '../domain/session'
 import { CAPTURE_CUBE_SIZE, CAPTURE_MAX_CELLS } from '../domain/capture'
 import type { CapturePreview } from '../domain/capture'
+import type { PlacementPreview } from '../domain/placement'
 import { CELL_SIZE, cellCenter } from '../domain/cell-world'
 import type { TerrainCell, TerrainMaterial } from '../domain/cell-world'
 import { createTerrainMeshLifecycle } from './terrain-mesh-lifecycle'
@@ -31,6 +32,10 @@ export function capturePreviewCellCount(preview: CapturePreview | null): number 
   return preview === null || !preview.valid
     ? 0
     : Math.min(preview.cells.length, CAPTURE_MAX_CELLS)
+}
+
+export function placementPreviewCellCount(_preview: PlacementPreview | null): number {
+  return 0
 }
 
 export interface PivotScene {
