@@ -30,7 +30,7 @@ export function createPivotHud(root: HTMLElement): PivotHud {
     render(snapshot, pointerLocked, placementPreview = null): void {
       const player = snapshot.player
       const ability = player.wire !== null
-        ? `WIRE ${player.wire.ticksRemaining}`
+        ? 'WIRE HOLD'
         : player.dashAvailable ? 'DASH READY' : 'DASH SPENT'
       const placementFailure = placementFailureLabel(placementPreview)
       const placementStatus = placementPreview === null

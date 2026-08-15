@@ -16,13 +16,6 @@ export const AIR_ACCELERATION = 16
 export const DASH_SPEED = 18
 export const DASH_TICKS = 9
 export const WIRE_RANGE = 30
-export const WIRE_TARGET_SPEED = 24
-export const WIRE_TICKS = 48
-export const WIRE_ARRIVAL_RADIUS = 1
-export const WIRE_GRAVITY_SCALE = 0.35
-export const WIRE_STEERING_SCALE = 0.3
-
-const WIRE_ACCELERATION = 72
 const WIRE_ORIGIN_HEIGHT = 0.6
 const EPSILON = 1e-8
 
@@ -32,8 +25,7 @@ export interface StaticCollider extends Aabb3 {
 
 export interface WirePullState {
   anchor: Vec3
-  ticksRemaining: number
-  ropeLength?: number
+  ropeLength: number
 }
 
 export interface PlayerState {
@@ -75,6 +67,7 @@ export function stepPlayer(
     if (edge === 'release') {
       if (player.wire !== null) {
         player.wire = null
+        player.velocity.y = Math.max(player.velocity.y, WIRE_RELEASE_UP_SPEED)
         player.velocity = clampVec3Length(player.velocity, MAX_WIRE_RELEASE_SPEED)
         releasedWire = true
       }
@@ -87,12 +80,18 @@ export function stepPlayer(
         WIRE_RANGE,
       )
       if (hit !== null && hit.distance <= WIRE_RANGE && hit.wireable) {
-        player.wire = { anchor: hit.point, ticksRemaining: WIRE_TICKS }
+        player.wire = {
+          anchor: hit.point,
+          ropeLength: lengthVec3({
+            x: hit.point.x - playerWireOrigin(player.position).x,
+            y: hit.point.y - playerWireOrigin(player.position).y,
+            z: hit.point.z - playerWireOrigin(player.position).z,
+          }),
+        }
       }
     }
   }
 
-  const wireActiveAtStart = player.wire !== null
   let jumpedThisTick = false
   if (player.wire !== null) {
     stepWire(player, command, stepSeconds)
@@ -101,10 +100,7 @@ export function stepPlayer(
   }
 
   if (!jumpedThisTick) {
-    player.velocity.y = Math.max(
-      MAX_FALL_SPEED,
-      player.velocity.y + GRAVITY * stepSeconds * (wireActiveAtStart ? WIRE_GRAVITY_SCALE : 1),
-    )
+    player.velocity.y = Math.max(MAX_FALL_SPEED, player.velocity.y + GRAVITY * stepSeconds)
   }
 
   const pullDirection = player.wire === null
@@ -123,6 +119,7 @@ export function stepPlayer(
   player.position = collision.position
   player.velocity = collision.velocity
   player.grounded = collision.grounded
+  if (player.wire !== null) constrainWire(player)
   if (!wasGrounded && collision.grounded) {
     player.airJumpsRemaining = 1
     player.dashAvailable = true
@@ -190,30 +187,78 @@ function stepWire(player: PlayerState, command: PlayerCommand, stepSeconds: numb
   const wire = player.wire
   if (wire === null) return
   const origin = playerWireOrigin(player.position)
-  const offset = {
-    x: wire.anchor.x - origin.x,
-    y: wire.anchor.y - origin.y,
-    z: wire.anchor.z - origin.z,
+  const outward = {
+    x: origin.x - wire.anchor.x,
+    y: origin.y - wire.anchor.y,
+    z: origin.z - wire.anchor.z,
   }
-  if (lengthVec3(offset) <= WIRE_ARRIVAL_RADIUS || wire.ticksRemaining <= 0) {
-    player.wire = null
-    player.velocity = clampVec3Length(player.velocity, MAX_WIRE_RELEASE_SPEED)
-    return
-  }
-
-  const pull = normalizeVec3(offset)
+  const distance = lengthVec3(outward)
+  const radial = normalizeVec3(outward)
+  const taut = distance >= wire.ropeLength - EPSILON
+  const gravity = { x: 0, y: GRAVITY, z: 0 }
   const steering = movementWorldDirection(command)
-  const target = {
-    x: pull.x * WIRE_TARGET_SPEED + steering.x * MOVE_SPEED * WIRE_STEERING_SCALE,
-    y: pull.y * WIRE_TARGET_SPEED,
-    z: pull.z * WIRE_TARGET_SPEED + steering.z * MOVE_SPEED * WIRE_STEERING_SCALE,
+  const gravityAcceleration = taut ? projectTangent(gravity, radial) : gravity
+  const steeringAcceleration = projectTangent({
+    x: steering.x * WIRE_SWING_STEERING_ACCELERATION,
+    y: 0,
+    z: steering.z * WIRE_SWING_STEERING_ACCELERATION,
+  }, radial)
+  player.velocity = {
+    x: player.velocity.x + (gravityAcceleration.x + steeringAcceleration.x) * stepSeconds,
+    y: player.velocity.y + (gravityAcceleration.y + steeringAcceleration.y) * stepSeconds,
+    z: player.velocity.z + (gravityAcceleration.z + steeringAcceleration.z) * stepSeconds,
   }
-  player.velocity = approachVec3(player.velocity, target, WIRE_ACCELERATION * stepSeconds)
-  wire.ticksRemaining -= 1
-  if (wire.ticksRemaining <= 0) {
-    player.wire = null
-    player.velocity = clampVec3Length(player.velocity, MAX_WIRE_RELEASE_SPEED)
+  if (taut) {
+    player.velocity = removeOutwardRadialVelocity(player.velocity, radial)
   }
+}
+
+function constrainWire(player: PlayerState): void {
+  const wire = player.wire
+  if (wire === null) return
+  const origin = playerWireOrigin(player.position)
+  const outward = {
+    x: origin.x - wire.anchor.x,
+    y: origin.y - wire.anchor.y,
+    z: origin.z - wire.anchor.z,
+  }
+  const distance = lengthVec3(outward)
+  if (distance <= wire.ropeLength || distance <= EPSILON) return
+  const radial = normalizeVec3(outward)
+  const constrainedOrigin = {
+    x: wire.anchor.x + radial.x * wire.ropeLength,
+    y: wire.anchor.y + radial.y * wire.ropeLength,
+    z: wire.anchor.z + radial.z * wire.ropeLength,
+  }
+  player.position = {
+    x: player.position.x + constrainedOrigin.x - origin.x,
+    y: player.position.y + constrainedOrigin.y - origin.y,
+    z: player.position.z + constrainedOrigin.z - origin.z,
+  }
+  player.velocity = removeOutwardRadialVelocity(player.velocity, radial)
+}
+
+function projectTangent(value: Vec3, radial: Vec3): Vec3 {
+  const radialMagnitude = dotVec3(value, radial)
+  return {
+    x: value.x - radial.x * radialMagnitude,
+    y: value.y - radial.y * radialMagnitude,
+    z: value.z - radial.z * radialMagnitude,
+  }
+}
+
+function removeOutwardRadialVelocity(velocity: Vec3, radial: Vec3): Vec3 {
+  const radialSpeed = dotVec3(velocity, radial)
+  if (radialSpeed <= 0) return velocity
+  return {
+    x: velocity.x - radial.x * radialSpeed,
+    y: velocity.y - radial.y * radialSpeed,
+    z: velocity.z - radial.z * radialSpeed,
+  }
+}
+
+function dotVec3(first: Vec3, second: Vec3): number {
+  return first.x * second.x + first.y * second.y + first.z * second.z
 }
 
 function dashWorldDirection(command: PlayerCommand): Vec3 {
@@ -251,16 +296,4 @@ function approachHorizontal(
   if (length <= maximumChange || length === 0) return target
   const scale = maximumChange / length
   return { x: value.x + deltaX * scale, z: value.z + deltaZ * scale }
-}
-
-function approachVec3(value: Vec3, target: Vec3, maximumChange: number): Vec3 {
-  const delta = { x: target.x - value.x, y: target.y - value.y, z: target.z - value.z }
-  const length = lengthVec3(delta)
-  if (length <= maximumChange || length === 0) return target
-  const scale = maximumChange / length
-  return {
-    x: value.x + delta.x * scale,
-    y: value.y + delta.y * scale,
-    z: value.z + delta.z * scale,
-  }
 }

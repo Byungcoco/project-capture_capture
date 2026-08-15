@@ -38,8 +38,10 @@ export function placementPreviewCellCount(preview: PlacementPreview | null): num
   return preview === null ? 0 : Math.min(preview.cells.length, CAPTURE_MAX_CELLS)
 }
 
-export function wireShouldBeVisible(_wire: GameSnapshot['player']['wire']): boolean {
-  return false
+export function wireShouldBeVisible(
+  wire: GameSnapshot['player']['wire'],
+): wire is NonNullable<GameSnapshot['player']['wire']> {
+  return wire !== null
 }
 
 export interface PivotScene {
@@ -263,16 +265,17 @@ export function createPivotScene(root: HTMLElement): PivotScene {
       prepareCamera(snapshot, view)
       const { position } = snapshot.player
       player.position.set(position.x, position.y, position.z)
-      if (snapshot.player.wire === null) {
+      const activeWire = snapshot.player.wire
+      if (!wireShouldBeVisible(activeWire)) {
         wire.visible = false
       } else {
         wire.visible = true
         wireGeometry.setFromPoints([
           new THREE.Vector3(position.x, position.y + 0.6, position.z),
           new THREE.Vector3(
-            snapshot.player.wire.anchor.x,
-            snapshot.player.wire.anchor.y,
-            snapshot.player.wire.anchor.z,
+            activeWire.anchor.x,
+            activeWire.anchor.y,
+            activeWire.anchor.z,
           ),
         ])
       }
