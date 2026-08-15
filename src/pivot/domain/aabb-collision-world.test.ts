@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { createAabbCollisionWorld } from './aabb-collision-world'
 import { createCellCollisionWorld } from './cell-world'
+import { sweptSphereAabbDistance } from './collision-world'
 import type { CollisionWorld } from './collision-world'
 import { IDLE_PLAYER_COMMAND } from './commands'
 import type { Vec3 } from './math'
@@ -16,6 +17,23 @@ interface CandidateWorld extends CollisionWorld {
     maximumDistance: number,
   ) => readonly { point: Vec3; wireable: boolean }[]
 }
+
+describe('exact sphere sweep', () => {
+  it('1e-5m 저속 segment도 같은 tick 안의 face 접촉을 놓치지 않는다', () => {
+    const distance = sweptSphereAabbDistance(
+      { x: -0.120005, y: 0.5, z: 0.5 },
+      { x: 0.00001, y: 0, z: 0 },
+      0.12,
+      {
+        center: { x: 0.5, y: 0.5, z: 0.5 },
+        halfSize: { x: 0.5, y: 0.5, z: 0.5 },
+      },
+    )
+
+    expect(distance).not.toBeNull()
+    expect(distance).toBeCloseTo(0.000005, 10)
+  })
+})
 
 describe('AABB wire assist query', () => {
   it('생성 뒤 source collider와 배열을 변경해도 raycast move 후보가 같은 snapshot geometry를 사용한다', () => {
