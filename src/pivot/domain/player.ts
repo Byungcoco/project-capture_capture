@@ -95,7 +95,7 @@ export function stepPlayer(
   let jumpedThisTick = false
   if (player.wire !== null) {
     stepWire(player, command, stepSeconds)
-  } else {
+  } else if (!releasedWire) {
     jumpedThisTick = stepMovement(player, command, stepSeconds)
   }
 
@@ -110,16 +110,21 @@ export function stepPlayer(
         y: player.wire.anchor.y - playerWireOrigin(player.position).y,
         z: player.wire.anchor.z - playerWireOrigin(player.position).z,
       })
+  const wireMotion = player.wire === null
+    ? null
+    : createWireMotion(player, stepSeconds)
+  const movementVelocity = wireMotion?.movementVelocity ?? player.velocity
   const collision = world.moveAabb(
     player.position,
-    player.velocity,
+    movementVelocity,
     player.halfSize,
     stepSeconds,
   )
   player.position = collision.position
-  player.velocity = collision.velocity
+  player.velocity = wireMotion === null
+    ? collision.velocity
+    : collisionVelocity(wireMotion.constrainedVelocity, collision)
   player.grounded = collision.grounded
-  if (player.wire !== null) constrainWire(player)
   if (!wasGrounded && collision.grounded) {
     player.airJumpsRemaining = 1
     player.dashAvailable = true
@@ -128,9 +133,14 @@ export function stepPlayer(
   if (
     player.wire !== null
     && pullDirection !== null
-    && collision.contacts.some((contact) => (
-      pullDirection[contact.axis] * contact.normal < -EPSILON
-    ))
+    && collision.contacts.some((contact) => {
+      const blocksTension = pullDirection[contact.axis] * contact.normal < -EPSILON
+      const blocksMovement = movementVelocity[contact.axis] * contact.normal < -EPSILON
+      const groundSupport = collision.grounded
+        && contact.axis === 'y'
+        && contact.normal === 1
+      return blocksTension || (blocksMovement && !groundSupport)
+    })
   ) {
     player.wire = null
   }
@@ -213,29 +223,73 @@ function stepWire(player: PlayerState, command: PlayerCommand, stepSeconds: numb
   }
 }
 
-function constrainWire(player: PlayerState): void {
+interface WireMotion {
+  movementVelocity: Vec3
+  constrainedVelocity: Vec3
+}
+
+function createWireMotion(player: PlayerState, stepSeconds: number): WireMotion {
   const wire = player.wire
-  if (wire === null) return
-  const origin = playerWireOrigin(player.position)
-  const outward = {
-    x: origin.x - wire.anchor.x,
-    y: origin.y - wire.anchor.y,
-    z: origin.z - wire.anchor.z,
+  if (wire === null) {
+    return { movementVelocity: player.velocity, constrainedVelocity: player.velocity }
   }
-  const distance = lengthVec3(outward)
-  if (distance <= wire.ropeLength || distance <= EPSILON) return
-  const radial = normalizeVec3(outward)
+  const origin = playerWireOrigin(player.position)
+  const proposedOrigin = {
+    x: origin.x + player.velocity.x * stepSeconds,
+    y: origin.y + player.velocity.y * stepSeconds,
+    z: origin.z + player.velocity.z * stepSeconds,
+  }
+  const proposedOutward = {
+    x: proposedOrigin.x - wire.anchor.x,
+    y: proposedOrigin.y - wire.anchor.y,
+    z: proposedOrigin.z - wire.anchor.z,
+  }
+  const proposedDistance = lengthVec3(proposedOutward)
+  if (proposedDistance <= wire.ropeLength || proposedDistance <= EPSILON) {
+    return { movementVelocity: player.velocity, constrainedVelocity: player.velocity }
+  }
+  const radial = normalizeVec3(proposedOutward)
   const constrainedOrigin = {
     x: wire.anchor.x + radial.x * wire.ropeLength,
     y: wire.anchor.y + radial.y * wire.ropeLength,
     z: wire.anchor.z + radial.z * wire.ropeLength,
   }
-  player.position = {
-    x: player.position.x + constrainedOrigin.x - origin.x,
-    y: player.position.y + constrainedOrigin.y - origin.y,
-    z: player.position.z + constrainedOrigin.z - origin.z,
+  const movementVelocity = {
+    x: (constrainedOrigin.x - origin.x) / stepSeconds,
+    y: (constrainedOrigin.y - origin.y) / stepSeconds,
+    z: (constrainedOrigin.z - origin.z) / stepSeconds,
   }
-  player.velocity = removeOutwardRadialVelocity(player.velocity, radial)
+  const currentOutward = {
+    x: origin.x - wire.anchor.x,
+    y: origin.y - wire.anchor.y,
+    z: origin.z - wire.anchor.z,
+  }
+  const currentRadial = lengthVec3(currentOutward) <= EPSILON
+    ? radial
+    : normalizeVec3(currentOutward)
+  const tangentSpeed = lengthVec3(projectTangent(player.velocity, currentRadial))
+  const nextTangent = projectTangent(player.velocity, radial)
+  const nextTangentLength = lengthVec3(nextTangent)
+  const constrainedVelocity = nextTangentLength <= EPSILON
+    ? { x: 0, y: 0, z: 0 }
+    : {
+        x: nextTangent.x * tangentSpeed / nextTangentLength,
+        y: nextTangent.y * tangentSpeed / nextTangentLength,
+        z: nextTangent.z * tangentSpeed / nextTangentLength,
+      }
+  return { movementVelocity, constrainedVelocity }
+}
+
+function collisionVelocity(
+  constrainedVelocity: Vec3,
+  collision: ReturnType<CollisionWorld['moveAabb']>,
+): Vec3 {
+  if (collision.blocked && collision.contacts.length === 0) return collision.velocity
+  const velocity = { ...constrainedVelocity }
+  for (const contact of collision.contacts) {
+    velocity[contact.axis] = collision.velocity[contact.axis]
+  }
+  return velocity
 }
 
 function projectTangent(value: Vec3, radial: Vec3): Vec3 {

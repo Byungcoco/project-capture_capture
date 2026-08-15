@@ -8,6 +8,7 @@ import type { CapturePreview } from '../domain/capture'
 import type { PlacementPreview } from '../domain/placement'
 import { CELL_SIZE, cellCenter } from '../domain/cell-world'
 import type { TerrainCell, TerrainMaterial } from '../domain/cell-world'
+import type { Vec3 } from '../domain/math'
 import { createTerrainMeshLifecycle } from './terrain-mesh-lifecycle'
 import { createSceneDispose } from './scene-lifecycle'
 
@@ -42,6 +43,28 @@ export function wireShouldBeVisible(
   wire: GameSnapshot['player']['wire'],
 ): wire is NonNullable<GameSnapshot['player']['wire']> {
   return wire !== null
+}
+
+export function updateWireLine(
+  line: THREE.Line,
+  playerPosition: Vec3,
+  activeWire: GameSnapshot['player']['wire'],
+): void {
+  if (!wireShouldBeVisible(activeWire)) {
+    line.visible = false
+    return
+  }
+  line.visible = true
+  const geometry = line.geometry
+  let positions = geometry.getAttribute('position')
+  if (positions === undefined || positions.count !== 2) {
+    positions = new THREE.Float32BufferAttribute(6, 3)
+    geometry.setAttribute('position', positions)
+  }
+  positions.setXYZ(0, playerPosition.x, playerPosition.y + 0.6, playerPosition.z)
+  positions.setXYZ(1, activeWire.anchor.x, activeWire.anchor.y, activeWire.anchor.z)
+  positions.needsUpdate = true
+  geometry.computeBoundingSphere()
 }
 
 export interface PivotScene {
@@ -265,20 +288,7 @@ export function createPivotScene(root: HTMLElement): PivotScene {
       prepareCamera(snapshot, view)
       const { position } = snapshot.player
       player.position.set(position.x, position.y, position.z)
-      const activeWire = snapshot.player.wire
-      if (!wireShouldBeVisible(activeWire)) {
-        wire.visible = false
-      } else {
-        wire.visible = true
-        wireGeometry.setFromPoints([
-          new THREE.Vector3(position.x, position.y + 0.6, position.z),
-          new THREE.Vector3(
-            activeWire.anchor.x,
-            activeWire.anchor.y,
-            activeWire.anchor.z,
-          ),
-        ])
-      }
+      updateWireLine(wire, position, snapshot.player.wire)
       updatePreview(previewCube, previewCells, capturePreview, placementPreview)
       renderer.render(scene, camera)
     },
