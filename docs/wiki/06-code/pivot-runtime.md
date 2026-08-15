@@ -59,7 +59,7 @@ summary: develop-jaehyeok 피벗 런타임의 결정론 상태, 캡처·배치·
 - 좌클릭은 pointer lock에서 boolean edge 하나로 합쳐지고 첫 physics sample에서 소비된다. unlock과 blur는 queue를 비운다.
 - player shot은 cooldown 8틱, 속도 50m/s, 피해 25, TTL 108, 반경 0.12m이고 id는 틱당 하나인 `player-shot-<tick>`이다. camera origin이 player 중심에서 2m를 넘으면 중심 앞 0.6m로 보정한다.
 - enemy는 고정형이고 HP 75, halfSize `{0.55,0.75,0.55}`다. 안정 id 순서와 정적 offset으로 150틱마다 발사 시점 player 중심을 향해 속도 10m/s, 피해 15, TTL 300 탄환을 만든다. HP 0이면 목록에서 제거된다.
-- 충돌은 한 틱 이동 구간 전체의 swept 검사다. target은 확장 AABB, terrain은 BVH 가지치기 뒤 leaf에서 구-박스 face/edge/corner 접촉 시각을 풀어 횡방향 반경과 사선 접촉을 보존한다. 같은 거리면 terrain이 우선한다.
+- 충돌은 한 틱 이동 구간 전체의 정확한 swept sphere-AABB 검사다. terrain, enemy와 player가 같은 face/edge/corner 접촉 기하를 사용하며 정지 projectile의 초기 overlap도 검사한다. terrain은 BVH로 가지치기하고 같은 거리면 terrain이 우선한다. 이 sweep은 custom world를 포함한 `CollisionWorld`의 필수 계약이다.
 - 제거 조건은 TTL 0, y < -20, 각 축 절댓값 256m 초과다. 틱 시작 시 이미 위반한 탄환은 충돌·피해 계산 전에 선제 제거한다. player HP는 0 미만으로 내려가지 않는다.
 - 외부 주입 enemy/projectile은 신뢰 경계다. 배열·entry·nested vector shape를 property 접근 전에 좁히고 finite 값, 고유 id, `player-shot-*`/`enemy-shot-*` 예약 namespace, hp/ttl/radius/halfSize·컬렉션 상한을 검사한다. 모든 실패 code는 `INVALID_COMBAT_STATE`다.
 - id 정렬은 host locale이 아니라 UTF-16 code-unit 비교로 고정한다.
@@ -68,7 +68,7 @@ summary: develop-jaehyeok 피벗 런타임의 결정론 상태, 캡처·배치·
 
 ## 검증 상태
 
-- 자동 검증: Vitest 전체 30 files, 164 tests 및 프로덕션 build 통과.
+- 자동 검증: Vitest 전체 30 files, 175 tests 및 프로덕션 build 통과.
 - 브라우저: 확장 발판·enemy 4마리 렌더, HUD `HP 100 · ENEMY 4`와 `LMB FIRE`, console error 0 확인.
 - 미검증: 인앱 브라우저에서 pointer lock이 활성화되지 않아 실제 캡처, Q 배치, E 조준 보정·머리 위 자동 연결, 진자·릴리스 착지와 좌클릭 사격·피격 조작감은 수동 플레이테스트가 필요하다.
 - 알려진 비기능 경고: Three.js 프로덕션 chunk가 500kB를 초과한다.
