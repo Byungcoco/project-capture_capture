@@ -20,7 +20,7 @@ export interface BrowserInputState {
   dashQueued: boolean
   captureQueued: boolean
   placeHeld: boolean
-  placeQueued: boolean
+  placeReleaseCount: number
   wireEdgeQueue: readonly WireEdge[]
 }
 
@@ -38,7 +38,7 @@ export function createBrowserInputState(): BrowserInputState {
   return {
     pressedCodes: new Set(), yaw: 0, pitch: 0, pointerLocked: false,
     jumpQueued: false, dashQueued: false, captureQueued: false,
-    placeHeld: false, placeQueued: false,
+    placeHeld: false, placeReleaseCount: 0,
     wireEdgeQueue: [],
   }
 }
@@ -76,7 +76,7 @@ export function reduceBrowserInput(state: BrowserInputState, _event: BrowserInpu
       ...state,
       pressedCodes,
       placeHeld: event.code === 'KeyQ' ? false : state.placeHeld,
-      placeQueued: state.placeQueued || placeReleased,
+      placeReleaseCount: state.placeReleaseCount + Number(placeReleased),
       wireEdgeQueue: event.code === 'KeyE'
         ? [...state.wireEdgeQueue, 'release']
         : state.wireEdgeQueue,
@@ -108,7 +108,7 @@ export function sampleBrowserInput(
       jumpQueued: false,
       dashQueued: false,
       captureQueued: false,
-      placeQueued: false,
+      placeReleaseCount: Math.max(0, state.placeReleaseCount - 1),
       wireEdgeQueue: [],
     },
     command: {
@@ -122,7 +122,7 @@ export function sampleBrowserInput(
       wireEdges: state.wireEdgeQueue,
       capturePressed: state.captureQueued,
       placeHeld: state.placeHeld,
-      placeReleased: state.placeQueued,
+      placeReleased: state.placeReleaseCount > 0,
       ...(captureRay === undefined ? {} : {
         captureOrigin: captureRay.origin,
         captureDirection: captureRay.direction,
@@ -191,7 +191,7 @@ function clearTransientState(state: BrowserInputState): BrowserInputState {
     dashQueued: false,
     captureQueued: false,
     placeHeld: false,
-    placeQueued: false,
+    placeReleaseCount: 0,
     wireEdgeQueue: [...state.wireEdgeQueue, 'release'],
   }
 }

@@ -15,7 +15,11 @@ export const CAPTURE_CUBE_HALF_EXTENT = 1.5
 export const CAPTURE_RANGE = 18
 export const CAPTURE_MAX_CELLS = 216
 export const CAPTURE_STACK_LIMIT = 5
-export type CaptureStackValidationErrorCode = 'CAPTURE_STACK_LIMIT_EXCEEDED'
+export type CaptureStackValidationErrorCode =
+  | 'CAPTURE_STACK_LIMIT_EXCEEDED'
+  | 'INVALID_CAPTURE_CELL_OFFSET'
+  | 'DUPLICATE_CAPTURE_CELL_OFFSET'
+  | 'CAPTURE_CHUNK_TOO_LARGE'
 
 export class CaptureStackValidationError extends Error {
   constructor(
@@ -33,6 +37,34 @@ export function assertValidCaptureStack(stack: readonly CapturedChunk[]): void {
       'CAPTURE_STACK_LIMIT_EXCEEDED',
       `capture stack은 ${CAPTURE_STACK_LIMIT}개를 초과할 수 없습니다.`,
     )
+  }
+  for (const chunk of stack) {
+    if (chunk.cells.length > CAPTURE_MAX_CELLS) {
+      throw new CaptureStackValidationError(
+        'CAPTURE_CHUNK_TOO_LARGE',
+        `capture chunk는 ${CAPTURE_MAX_CELLS}셀을 초과할 수 없습니다.`,
+      )
+    }
+    const offsetKeys = new Set<string>()
+    for (const cell of chunk.cells) {
+      for (const axis of ['x', 'y', 'z'] as const) {
+        const value = cell.gridOffset[axis]
+        if (!Number.isFinite(value) || !Number.isInteger(value)) {
+          throw new CaptureStackValidationError(
+            'INVALID_CAPTURE_CELL_OFFSET',
+            `capture cell gridOffset ${axis}는 유한 정수여야 합니다.`,
+          )
+        }
+      }
+      const key = cellKey(cell.gridOffset)
+      if (offsetKeys.has(key)) {
+        throw new CaptureStackValidationError(
+          'DUPLICATE_CAPTURE_CELL_OFFSET',
+          `capture chunk에 중복 gridOffset을 사용할 수 없습니다: ${key}`,
+        )
+      }
+      offsetKeys.add(key)
+    }
   }
 }
 

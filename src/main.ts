@@ -58,13 +58,8 @@ function frame(timeMilliseconds: number): void {
 
   accumulatorSeconds = advance.remainderSeconds
   const previewRay = scene.getCameraRay(session.snapshot, input.getState())
-  const preview = previewCapture(session.snapshot.terrain, {
-    tick: session.snapshot.tick + 1,
-    origin: previewRay.origin,
-    direction: previewRay.direction,
-    basis: previewRay.basis,
-  }, session.snapshot.captureStack)
-  const placementPreview = input.getState().placeHeld
+  const inputState = input.getState()
+  const placementPreview = inputState.placeHeld
     ? previewPlacement(
         {
           terrain: session.snapshot.terrain,
@@ -78,8 +73,16 @@ function frame(timeMilliseconds: number): void {
         },
       )
     : null
-  scene.render(session.snapshot, input.getState(), preview, placementPreview)
-  hud.render(session.snapshot, input.getState().pointerLocked, placementPreview)
+  const capturePreview = inputState.placeHeld
+    ? null
+    : previewCapture(session.snapshot.terrain, {
+        tick: session.snapshot.tick + 1,
+        origin: previewRay.origin,
+        direction: previewRay.direction,
+        basis: previewRay.basis,
+      }, session.snapshot.captureStack)
+  scene.render(session.snapshot, inputState, capturePreview, placementPreview)
+  hud.render(session.snapshot, inputState.pointerLocked, placementPreview)
   requestAnimationFrame(frame)
 }
 

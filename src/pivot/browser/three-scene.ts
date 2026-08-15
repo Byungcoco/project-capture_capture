@@ -287,7 +287,7 @@ function disposeMaterial(material: THREE.Material | readonly THREE.Material[]): 
   ;(material as THREE.Material).dispose()
 }
 
-function updatePreview(
+export function updatePreview(
   cube: THREE.Mesh,
   selected: THREE.InstancedMesh,
   capturePreview: CapturePreview | null,

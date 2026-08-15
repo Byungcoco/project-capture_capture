@@ -11,7 +11,8 @@ import {
 import type { TerrainCell } from './cell-world'
 import type { CollisionWorld } from './collision-world'
 import { placeChunk } from './placement'
-import { createPlayerState, stepPlayer } from './player'
+import { solveCameraAim } from './aim'
+import { WIRE_RANGE, createPlayerState, playerWireOrigin, stepPlayer } from './player'
 import type { PlayerState, StaticCollider } from './player'
 
 export interface WorldState {
@@ -143,12 +144,29 @@ export function stepPivotSession(
   const world = actionState !== null
     ? createCellCollisionWorld(terrain)
     : session.world
+  const actionAimRay = placementResult?.ok
+    ? { origin: command.placementOrigin, direction: command.placementDirection }
+    : captureResult?.ok
+      ? { origin: command.captureOrigin, direction: command.captureDirection }
+      : null
+  const playerCommand = actionAimRay !== null && command.wireEdges.includes('press')
+    ? {
+        ...command,
+        wireAimDirection: solveCameraAim(
+          world,
+          actionAimRay.origin,
+          actionAimRay.direction,
+          playerWireOrigin(session.state.player.position),
+          WIRE_RANGE,
+        ).wireAimDirection,
+      }
+    : command
   const state: WorldState = {
     ...session.state,
     tick,
     terrain,
     captureStack,
-    player: stepPlayer(session.state.player, command, world, TICK_SECONDS),
+    player: stepPlayer(session.state.player, playerCommand, world, TICK_SECONDS),
   }
   return {
     state,
