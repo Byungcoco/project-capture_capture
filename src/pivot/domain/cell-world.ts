@@ -1,4 +1,6 @@
 import type { Vec3 } from './math'
+import { createAabbCollisionWorld } from './aabb-collision-world'
+import type { CollisionWorld } from './collision-world'
 
 export const CELL_SIZE = 0.5
 
@@ -28,9 +30,9 @@ export function cellKey(index: CellIndex): string {
 
 export function worldToCellIndex(position: Vec3): CellIndex {
   return {
-    x: Math.trunc(position.x / CELL_SIZE),
-    y: Math.trunc(position.y / CELL_SIZE),
-    z: Math.trunc(position.z / CELL_SIZE),
+    x: Math.floor(position.x / CELL_SIZE),
+    y: Math.floor(position.y / CELL_SIZE),
+    z: Math.floor(position.z / CELL_SIZE),
   }
 }
 
@@ -50,4 +52,14 @@ export function compareCellIndices(first: TerrainCell, second: TerrainCell): num
   return first.index.y - second.index.y
     || first.index.z - second.index.z
     || first.index.x - second.index.x
+}
+
+export function createCellCollisionWorld(terrain: readonly TerrainCell[]): CollisionWorld {
+  return createAabbCollisionWorld(terrain
+    .filter((cell) => cell.collidable)
+    .map((cell) => ({
+      center: cellCenter(cell.index),
+      halfSize: { x: CELL_SIZE / 2, y: CELL_SIZE / 2, z: CELL_SIZE / 2 },
+      wireable: cell.wireable,
+    })))
 }

@@ -1,11 +1,13 @@
 import { IDLE_PLAYER_COMMAND } from '../domain/commands'
 import type { PlayerCommand, WireEdge } from '../domain/commands'
 import type { Vec3 } from '../domain/math'
+import type { Ray3 } from './types'
 
 export type BrowserInputEvent =
   | { type: 'key-down'; code: string; repeat: boolean }
   | { type: 'key-up'; code: string }
   | { type: 'mouse-move'; movementX: number; movementY: number }
+  | { type: 'mouse-down'; button: number }
   | { type: 'pointer-lock'; locked: boolean }
   | { type: 'blur' }
 
@@ -16,6 +18,7 @@ export interface BrowserInputState {
   pointerLocked: boolean
   jumpQueued: boolean
   dashQueued: boolean
+  captureQueued: boolean
   wireEdgeQueue: readonly WireEdge[]
 }
 
@@ -25,14 +28,14 @@ export interface BrowserInputSample {
 }
 
 export interface BrowserInput {
-  sampleCommand(cameraForward: Vec3, wireAimDirection: Vec3): PlayerCommand
+  sampleCommand(cameraForward: Vec3, wireAimDirection: Vec3, captureRay: Ray3): PlayerCommand
   getState(): BrowserInputState
 }
 
 export function createBrowserInputState(): BrowserInputState {
   return {
     pressedCodes: new Set(), yaw: 0, pitch: 0, pointerLocked: false,
-    jumpQueued: false, dashQueued: false,
+    jumpQueued: false, dashQueued: false, captureQueued: false,
     wireEdgeQueue: [],
   }
 }
@@ -55,6 +58,9 @@ export function reduceBrowserInput(state: BrowserInputState, _event: BrowserInpu
         Math.min(Math.PI * 0.42, state.pitch - event.movementY * 0.0022),
       ),
     }
+  }
+  if (event.type === 'mouse-down') {
+    return event.button === 2 ? { ...state, captureQueued: true } : state
   }
 
   const pressedCodes = new Set(state.pressedCodes)
@@ -85,12 +91,14 @@ export function sampleBrowserInput(
   state: BrowserInputState,
   cameraForward: Vec3,
   wireAimDirection: Vec3,
+  captureRay?: Ray3,
 ): BrowserInputSample {
   return {
     state: {
       ...state,
       jumpQueued: false,
       dashQueued: false,
+      captureQueued: false,
       wireEdgeQueue: [],
     },
     command: {
@@ -102,6 +110,12 @@ export function sampleBrowserInput(
       jumpPressed: state.jumpQueued,
       dashPressed: state.dashQueued,
       wireEdges: state.wireEdgeQueue,
+      capturePressed: state.captureQueued,
+      ...(captureRay === undefined ? {} : {
+        captureOrigin: captureRay.origin,
+        captureDirection: captureRay.direction,
+        captureBasis: captureRay.basis,
+      }),
     },
   }
 }
@@ -129,6 +143,14 @@ export function createBrowserInput(canvas: HTMLCanvasElement): BrowserInput {
       type: 'mouse-move', movementX: event.movementX, movementY: event.movementY,
     })
   })
+  window.addEventListener('mousedown', (event) => {
+    if (event.button !== 2) return
+    event.preventDefault()
+    if (state.pointerLocked) {
+      state = reduceBrowserInput(state, { type: 'mouse-down', button: event.button })
+    }
+  })
+  canvas.addEventListener('contextmenu', (event) => event.preventDefault())
   window.addEventListener('blur', () => {
     state = reduceBrowserInput(state, { type: 'blur' })
   })
@@ -138,8 +160,8 @@ export function createBrowserInput(canvas: HTMLCanvasElement): BrowserInput {
     })
   })
   return {
-    sampleCommand(cameraForward, wireAimDirection): PlayerCommand {
-      const sample = sampleBrowserInput(state, cameraForward, wireAimDirection)
+    sampleCommand(cameraForward, wireAimDirection, captureRay): PlayerCommand {
+      const sample = sampleBrowserInput(state, cameraForward, wireAimDirection, captureRay)
       state = sample.state
       return sample.command
     },
@@ -153,6 +175,7 @@ function clearTransientState(state: BrowserInputState): BrowserInputState {
     pressedCodes: new Set(),
     jumpQueued: false,
     dashQueued: false,
+    captureQueued: false,
     wireEdgeQueue: [...state.wireEdgeQueue, 'release'],
   }
 }

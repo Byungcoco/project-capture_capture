@@ -9,7 +9,7 @@ export function createPivotHud(root: HTMLElement): PivotHud {
   hud.className = 'pivot-hud'
   hud.innerHTML = `
     <div class="pivot-hud__title">PIVOT PROTOTYPE</div>
-    <div class="pivot-hud__controls">클릭 시점 고정 · WASD 이동 · Space 더블 점프 · Shift 대시 · E 와이어</div>
+    <div class="pivot-hud__controls">클릭 시점 고정 · WASD 이동 · Space 더블 점프 · Shift 대시 · E 와이어 · 오른쪽 클릭 캡처</div>
     <div class="pivot-hud__status" aria-live="polite"></div>
     <div class="pivot-reticle" aria-hidden="true"></div>
   `
@@ -23,7 +23,7 @@ export function createPivotHud(root: HTMLElement): PivotHud {
       const ability = player.wire !== null
         ? `WIRE ${player.wire.ticksRemaining}`
         : player.dashAvailable ? 'DASH READY' : 'DASH SPENT'
-      status.textContent = `${pointerLocked ? 'LOCKED' : 'CLICK TO LOCK'} · ${ability} · JUMP ${player.airJumpsRemaining}`
+      status.textContent = `${pointerLocked ? 'LOCKED' : 'CLICK TO LOCK'} · ${ability} · JUMP ${player.airJumpsRemaining} · STACK ${snapshot.captureStack.length}/5`
     },
   }
 }

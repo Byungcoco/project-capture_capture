@@ -6,14 +6,15 @@ import { solveCameraAim } from './pivot/browser/aim'
 import { createBrowserInput } from './pivot/browser/browser-input'
 import { createPivotHud } from './pivot/browser/hud'
 import { createPivotScene } from './pivot/browser/three-scene'
-import { MOVEMENT_COURSE, MOVEMENT_SPAWN } from './pivot/demo/movement-course'
+import { MOVEMENT_SPAWN, MOVEMENT_TERRAIN } from './pivot/demo/movement-course'
+import { previewCapture } from './pivot/domain/capture'
 import { WIRE_RANGE, createPlayerState, playerWireOrigin } from './pivot/domain/player'
 import { createPivotSession, stepPivotSession } from './pivot/domain/session'
 
 const app = document.querySelector<HTMLElement>('#app')
 if (app === null) throw new Error('게임 루트 요소를 찾을 수 없습니다.')
 
-const scene = createPivotScene(app, MOVEMENT_COURSE)
+const scene = createPivotScene(app)
 const input = createBrowserInput(scene.canvas)
 const hud = createPivotHud(app)
 let session = createSession()
@@ -22,7 +23,7 @@ let accumulatorSeconds = 0
 
 function createSession() {
   return createPivotSession({
-    colliders: MOVEMENT_COURSE,
+    terrain: MOVEMENT_TERRAIN,
     player: createPlayerState({ position: { ...MOVEMENT_SPAWN } }),
   })
 }
@@ -48,13 +49,20 @@ function frame(timeMilliseconds: number): void {
     )
     session = stepPivotSession(
       session,
-      input.sampleCommand(cameraRay.direction, aim.wireAimDirection),
+      input.sampleCommand(cameraRay.direction, aim.wireAimDirection, cameraRay),
     )
     if (session.state.player.position.y < -12) session = createSession()
   }
 
   accumulatorSeconds = advance.remainderSeconds
-  scene.render(session.snapshot, input.getState())
+  const previewRay = scene.getCameraRay(session.snapshot, input.getState())
+  const preview = previewCapture(session.snapshot.terrain, {
+    tick: session.snapshot.tick + 1,
+    origin: previewRay.origin,
+    direction: previewRay.direction,
+    basis: previewRay.basis,
+  })
+  scene.render(session.snapshot, input.getState(), preview)
   hud.render(session.snapshot, input.getState().pointerLocked)
   requestAnimationFrame(frame)
 }
