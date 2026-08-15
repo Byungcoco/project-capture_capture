@@ -21,56 +21,6 @@ canvas {
   display: block;
 }
 
-.pivot-hud {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  color: #dffaff;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  text-shadow: 0 1px 8px #000;
-}
-
-.pivot-hud__title,
-.pivot-hud__controls,
-.pivot-hud__status {
-  position: absolute;
-  left: 20px;
-  padding: 8px 11px;
-  border: 1px solid rgb(87 222 211 / 35%);
-  background: rgb(5 16 26 / 78%);
-}
-
-.pivot-hud__title {
-  top: 20px;
-  color: #62f4df;
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-}
-
-.pivot-hud__controls {
-  bottom: 20px;
-  font-size: 11px;
-}
-
-.pivot-hud__status {
-  top: 61px;
-  color: #ffd166;
-  font-size: 10px;
-}
-
-.pivot-reticle {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 9px;
-  height: 9px;
-  border: 1px solid #dffaff;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  box-shadow: 0 0 8px rgb(98 244 223 / 75%);
-}
-
 .game-ui {
   position: fixed;
   inset: 0;

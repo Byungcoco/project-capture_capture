@@ -2,7 +2,6 @@ import type { PlayerCommand } from './commands'
 import { createPlayerState, stepPlayer } from './player'
 import type { PlayerState, StaticCollider } from './player'
 import type { Vec3 } from './math'
-import { TICK_SECONDS } from '../../core/constants'
 
 export interface WorldState {
   tick: number
@@ -44,7 +43,7 @@ export function stepPivotSession(
   const state: WorldState = {
     ...session.state,
     tick: session.state.tick + 1,
-    player: stepPlayer(session.state.player, command, session.state.colliders, TICK_SECONDS),
+    player: stepPlayer(session.state.player, command, session.state.colliders, 1 / 60),
   }
   return { state, snapshot: toSnapshot(state) }
 }
