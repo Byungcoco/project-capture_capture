@@ -83,6 +83,7 @@ function cameraHitAt(z: number): CollisionRayHit {
 
 function queryWorld(hit: CollisionRayHit | null): CollisionWorld {
   return {
+    sweepSphere: () => null,
     raycast: (_origin, _direction, maximumDistance) => (
       hit !== null && hit.distance <= maximumDistance ? hit : null
     ),
@@ -98,6 +99,7 @@ function queryWorld(hit: CollisionRayHit | null): CollisionWorld {
 
 function integratingWorld(): CollisionWorld {
   return {
+    sweepSphere: () => null,
     raycast: () => null,
     moveAabb(position, velocity, _halfSize, stepSeconds) {
       return {

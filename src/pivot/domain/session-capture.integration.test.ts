@@ -139,6 +139,7 @@ function terrainCellAt(x: number): TerrainCell {
 
 function emptyWorld(): CollisionWorld {
   return {
+    sweepSphere: () => null,
     raycast: () => null,
     moveAabb: (position, velocity) => ({
       position,

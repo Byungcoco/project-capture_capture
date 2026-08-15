@@ -1,4 +1,5 @@
 import type { PlayerCommand } from './commands'
+import { sweptSphereAabbDistance } from './collision-world'
 import type { CollisionWorld } from './collision-world'
 import type { Vec3 } from './math'
 
@@ -145,30 +146,21 @@ export function stepCombat(state: CombatState, request: CombatStepRequest): Comb
   for (const projectile of projectiles.sort(compareId)) {
     if (projectile.ttl <= 0 || projectileOutOfBounds(projectile.position)) continue
     const delta = scale(projectile.velocity, request.stepSeconds)
-    const travelDistance = length(delta)
-    const sphereSweepAvailable = request.world.sweepSphere !== undefined
-    const terrainHit = travelDistance <= COLLISION_EPSILON
-      ? null
-      : request.world.sweepSphere?.(projectile.position, delta, projectile.radius)
-        ?? request.world.raycast(
-            projectile.position,
-            projectile.velocity,
-            travelDistance + projectile.radius,
-          )
+    const terrainHit = request.world.sweepSphere(
+      projectile.position,
+      delta,
+      projectile.radius,
+    )
     const targetHit = projectile.owner === 'player'
       ? nearestEnemyHit(projectile, delta, enemies)
-      : segmentAabbDistance(
+      : sweptSphereAabbDistance(
           projectile.position,
           delta,
-          request.playerPosition,
-          expand(request.playerHalfSize, projectile.radius),
+          projectile.radius,
+          { center: request.playerPosition, halfSize: request.playerHalfSize },
         )
     const targetDistance = typeof targetHit === 'number' ? targetHit : targetHit?.distance ?? null
-    const terrainDistance = terrainHit === null
-      ? null
-      : sphereSweepAvailable
-        ? terrainHit.distance
-        : Math.max(0, terrainHit.distance - projectile.radius)
+    const terrainDistance = terrainHit?.distance ?? null
     if (
       terrainDistance !== null
       && (targetDistance === null || terrainDistance <= targetDistance + COLLISION_EPSILON)
@@ -280,11 +272,11 @@ function nearestEnemyHit(
   for (let index = 0; index < enemies.length; index += 1) {
     const enemy = enemies[index]
     if (enemy === undefined || !enemy.alive) continue
-    const hitDistance = segmentAabbDistance(
+    const hitDistance = sweptSphereAabbDistance(
       projectile.position,
       delta,
-      enemy.position,
-      expand(enemy.halfSize, projectile.radius),
+      projectile.radius,
+      { center: enemy.position, halfSize: enemy.halfSize },
     )
     if (
       hitDistance !== null
@@ -294,30 +286,6 @@ function nearestEnemyHit(
     ) nearest = { enemyIndex: index, distance: hitDistance }
   }
   return nearest
-}
-
-function segmentAabbDistance(
-  origin: Vec3,
-  delta: Vec3,
-  center: Vec3,
-  halfSize: Vec3,
-): number | null {
-  let minimum = 0
-  let maximum = 1
-  for (const axis of ['x', 'y', 'z'] as const) {
-    const lower = center[axis] - halfSize[axis]
-    const upper = center[axis] + halfSize[axis]
-    if (Math.abs(delta[axis]) <= COLLISION_EPSILON) {
-      if (origin[axis] < lower || origin[axis] > upper) return null
-      continue
-    }
-    const first = (lower - origin[axis]) / delta[axis]
-    const second = (upper - origin[axis]) / delta[axis]
-    minimum = Math.max(minimum, Math.min(first, second))
-    maximum = Math.min(maximum, Math.max(first, second))
-    if (maximum < minimum) return null
-  }
-  return minimum * length(delta)
 }
 
 function validShotDirection(direction: Vec3 | undefined): Vec3 | null {
@@ -425,8 +393,4 @@ function scale(value: Vec3, multiplier: number): Vec3 {
 
 function addScaled(value: Vec3, direction: Vec3, amount: number): Vec3 {
   return add(value, scale(direction, amount))
-}
-
-function expand(value: Vec3, amount: number): Vec3 {
-  return { x: value.x + amount, y: value.y + amount, z: value.z + amount }
 }

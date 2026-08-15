@@ -751,6 +751,7 @@ interface IntegratingWorldOptions {
 
 function integratingWorld(options: IntegratingWorldOptions = {}): CollisionWorld {
   return {
+    sweepSphere: () => null,
     raycast: () => null,
     moveAabb(position, velocity, _halfSize, stepSeconds) {
       const nextPosition = {

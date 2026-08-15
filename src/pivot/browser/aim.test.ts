@@ -86,6 +86,7 @@ function queryWorld(
   distances?: number[],
 ): CollisionWorld {
   return {
+    sweepSphere: () => null,
     raycast: (_origin, _direction, maximumDistance) => {
       distances?.push(maximumDistance)
       return hit === null || hit.distance > maximumDistance ? null : hit
