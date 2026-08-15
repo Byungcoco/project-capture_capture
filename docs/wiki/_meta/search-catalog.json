@@ -1,7 +1,7 @@
 {
   "generated": true,
-  "generatedAt": "2026-08-15T18:46:38+09:00",
-  "documentCount": 23,
+  "generatedAt": "2026-08-15T19:03:59+09:00",
+  "documentCount": 24,
   "documents": [
     {
       "path": "01-product/concept.md",
@@ -309,6 +309,28 @@
       "summary": "프로토타입 캡처 프레임을 뷰포트 너비 30%, 높이 40%로 고정하고 화면 정규화 좌표로 표현하는 결정.",
       "headings": [
         "ADR-0008: 화면 비율 기반 고정 캡처 프레임",
+        "맥락",
+        "결정",
+        "이유",
+        "고려한 대안",
+        "영향"
+      ]
+    },
+    {
+      "path": "04-decisions/ADR-0009-wire-reel-launch.md",
+      "title": "ADR-0009: 와이어 탭 회수와 탄도 역산 발사",
+      "type": "decision",
+      "status": "accepted",
+      "tags": [
+        "wire-action",
+        "pivot-runtime",
+        "input-design",
+        "movement"
+      ],
+      "updated": "2026-08-15",
+      "summary": "와이어 회수 비행을 짧은 탭 해제와 매달린 상태의 점프로 발동하고, 가속도 튜닝 대신 앵커 상단을 향한 탄도 역산으로 초기 속도를 구하는 결정.",
+      "headings": [
+        "ADR-0009: 와이어 탭 회수와 탄도 역산 발사",
         "맥락",
         "결정",
         "이유",

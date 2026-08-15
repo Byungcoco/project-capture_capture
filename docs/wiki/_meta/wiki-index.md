@@ -12,8 +12,8 @@ summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 
 > 생성 파일이다. 직접 편집하지 말고 `python tools/wiki_sync.py sync`를 실행한다.
 
-- 생성 시각: 2026-08-15T18:46:38+09:00
-- 원본 문서: 23개
+- 생성 시각: 2026-08-15T19:03:59+09:00
+- 원본 문서: 24개
 
 ## product
 
@@ -48,6 +48,7 @@ summary: 원본 위키 문서를 유형별로 나열한 LLM용 정적 인덱스.
 | [[../04-decisions/ADR-0006-adopt-flee-workflow|ADR-0006: project-flee 작업 체계 전면 채택]] | accepted | workflow, collaboration | 팀원의 검증된 협업 체계(위키·wiki_sync·TDD·Git Flow·dispatch)를 그대로 채택한 결정. | 2026-08-13 |
 | [[../04-decisions/ADR-0007-game-mode-fsm|ADR-0007: 게임 모드 FSM — core가 소유하고 render가 파생한다]] | accepted | game-mode, fsm, input, replay, determinism | 단일 GameMode FSM, 슬롯 기반 캡처, 조준을 리플레이에서 제외하는 이벤트 기록 방식을 정한 결정. | 2026-08-14 |
 | [[../04-decisions/ADR-0008-fixed-normalized-capture-frame|ADR-0008: 화면 비율 기반 고정 캡처 프레임]] | accepted | capture, frame, normalized-coordinates, prototype | 프로토타입 캡처 프레임을 뷰포트 너비 30%, 높이 40%로 고정하고 화면 정규화 좌표로 표현하는 결정. | 2026-08-14 |
+| [[../04-decisions/ADR-0009-wire-reel-launch|ADR-0009: 와이어 탭 회수와 탄도 역산 발사]] | accepted | wire-action, pivot-runtime, input-design, movement | 와이어 회수 비행을 짧은 탭 해제와 매달린 상태의 점프로 발동하고, 가속도 튜닝 대신 앵커 상단을 향한 탄도 역산으로 초기 속도를 구하는 결정. | 2026-08-15 |
 | [[../04-decisions/proposals/develop-jaehyeok-pivot|develop-jaehyeok 피벗 제안: 3인칭 캡처 와이어 액션]] | draft | branch-pivot, third-person-shooter, terrain-capture, wire-action, demo-scope | develop-jaehyeok 브랜치에서 3인칭 슈터·지형 절취 캡처·와이어 이동·공중 배치를 검증하고 추후 본류 설계로 선택 병합하기 위한 피벗 원본. | 2026-08-15 |
 
 ## progress
