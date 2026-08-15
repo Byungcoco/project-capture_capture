@@ -1,68 +1,75 @@
 import { describe, expect, it } from 'vitest'
 
 import { IDLE_PLAYER_COMMAND } from './commands'
-import type { CollisionWorld } from './collision-world'
-import { JUMP_SPEED, createPlayerState, stepPlayer } from './player'
-import type { PlayerState, StaticCollider } from './player'
-import { playerAabbRight, speedOf } from './session'
+import type { CollisionRayHit, CollisionWorld } from './collision-world'
+import {
+  JUMP_SPEED,
+  MAX_WIRE_RELEASE_SPEED,
+  createPlayerState,
+  stepPlayer,
+} from './player'
+import type { PlayerState } from './player'
+import { speedOf } from './session'
+import type { Vec3 } from './math'
 
 const STEP_SECONDS = 1 / 60
-const GROUND: StaticCollider = {
-  center: { x: 0, y: -0.5, z: 0 },
-  halfSize: { x: 20, y: 0.5, z: 20 },
-  wireable: false,
+const VALID_WIRE_HIT: CollisionRayHit = {
+  point: { x: 12, y: 4, z: 0 },
+  distance: 12,
+  wireable: true,
 }
 
 describe('피벗 플레이어', () => {
   it('공중에서는 두 번째 점프까지만 허용한다', () => {
+    const world = integratingWorld()
     const firstJump = stepPlayer(
       createPlayerState(),
       { ...IDLE_PLAYER_COMMAND, jumpPressed: true },
-      [GROUND],
+      world,
       STEP_SECONDS,
     )
     const secondJump = stepPlayer(
       firstJump,
       { ...IDLE_PLAYER_COMMAND, jumpPressed: true },
-      [GROUND],
+      world,
       STEP_SECONDS,
     )
     const thirdJump = stepPlayer(
       secondJump,
       { ...IDLE_PLAYER_COMMAND, jumpPressed: true },
-      [GROUND],
+      world,
       STEP_SECONDS,
     )
 
-    expect(firstJump.velocity.y).toBeGreaterThan(0)
+    expect(firstJump.velocity.y).toBe(JUMP_SPEED)
     expect(secondJump.velocity.y).toBe(JUMP_SPEED)
+    expect(secondJump.airJumpsRemaining).toBe(0)
     expect(thirdJump.velocity.y).toBeLessThan(JUMP_SPEED)
   })
 
   it('착지하면 공중 점프와 대시가 회복된다', () => {
     const exhausted: PlayerState = createPlayerState({
-      position: { x: 0, y: 0.85, z: 0 },
       velocity: { x: 0, y: -2, z: 0 },
       grounded: false,
       airJumpsRemaining: 0,
       dashAvailable: false,
     })
-
-    const landed = stepPlayer(exhausted, IDLE_PLAYER_COMMAND, [GROUND], STEP_SECONDS)
+    const landed = stepPlayer(
+      exhausted,
+      IDLE_PLAYER_COMMAND,
+      integratingWorld({ grounded: true }),
+      STEP_SECONDS,
+    )
 
     expect(landed.grounded).toBe(true)
     expect(landed.airJumpsRemaining).toBe(1)
     expect(landed.dashAvailable).toBe(true)
   })
 
-  it('대시는 벽을 통과하지 않는다', () => {
-    const wall: StaticCollider = {
-      center: { x: 2.5, y: 1, z: 0 },
-      halfSize: { x: 0.5, y: 2, z: 3 },
-      wireable: false,
-    }
+  it('대시는 실제 이동하면서 벽 왼쪽을 넘지 않는다', () => {
+    const wallLeft = 2
+    const world = integratingWorld({ maximumPlayerX: wallLeft - 0.4 })
     let player = createPlayerState()
-
     for (let tick = 0; tick < 9; tick += 1) {
       player = stepPlayer(
         player,
@@ -72,147 +79,136 @@ describe('피벗 플레이어', () => {
           aimDirection: { x: 1, y: 0, z: 0 },
           dashPressed: tick === 0,
         },
-        [GROUND, wall],
+        world,
         STEP_SECONDS,
       )
     }
 
-    expect(playerAabbRight(player)).toBeLessThanOrEqual(2)
+    expect(player.position.x).toBeGreaterThan(0)
+    expect(player.position.x + player.halfSize.x).toBeLessThanOrEqual(wallLeft)
   })
 
-  it('와이어 사거리 밖과 차폐된 표면은 거부한다', () => {
-    const farAnchor: StaticCollider = {
-      center: { x: 31.5, y: 0.9, z: 0 },
-      halfSize: { x: 0.5, y: 0.5, z: 0.5 },
-      wireable: true,
-    }
-    const wall: StaticCollider = {
-      center: { x: 8, y: 0.9, z: 0 },
-      halfSize: { x: 0.5, y: 2, z: 2 },
-      wireable: false,
-    }
-    const hiddenAnchor: StaticCollider = {
-      center: { x: 16, y: 0.9, z: 0 },
-      halfSize: { x: 0.5, y: 0.5, z: 0.5 },
-      wireable: true,
-    }
-    const wireCommand = {
-      ...IDLE_PLAYER_COMMAND,
-      aimDirection: { x: 1, y: 0, z: 0 },
-      wirePressed: true,
-    }
-
+  it('와이어 유효 표면은 연결하고 사거리 밖과 차폐 표면은 거부한다', () => {
+    const queriedRanges: number[] = []
+    const valid = stepPlayer(
+      createPlayerState(),
+      { ...IDLE_PLAYER_COMMAND, aimDirection: { x: 1, y: 0.2, z: 0 }, wirePressed: true },
+      queryWorld(VALID_WIRE_HIT, queriedRanges),
+      STEP_SECONDS,
+    )
     const outOfRange = stepPlayer(
       createPlayerState(),
-      wireCommand,
-      [farAnchor],
+      { ...IDLE_PLAYER_COMMAND, aimDirection: { x: 1, y: 0, z: 0 }, wirePressed: true },
+      queryWorld({ ...VALID_WIRE_HIT, distance: 30.01 }),
       STEP_SECONDS,
     )
     const occluded = stepPlayer(
       createPlayerState(),
-      wireCommand,
-      [wall, hiddenAnchor],
+      { ...IDLE_PLAYER_COMMAND, aimDirection: { x: 1, y: 0, z: 0 }, wirePressed: true },
+      queryWorld({
+        point: { x: 4, y: 1.5, z: 0 },
+        distance: 4,
+        wireable: false,
+      }),
       STEP_SECONDS,
     )
 
+    expect(valid.wire).not.toBeNull()
+    expect(queriedRanges).toEqual([30])
     expect(outOfRange.wire).toBeNull()
     expect(occluded.wire).toBeNull()
   })
 
-  it('와이어 해제 후 속도를 보존한다', () => {
-    const anchor: StaticCollider = {
-      center: { x: 12, y: 4, z: 0 },
-      halfSize: { x: 0.5, y: 0.5, z: 0.5 },
-      wireable: true,
-    }
-    const aim = { x: 12, y: 3.1, z: 0 }
-    const pulling = stepPlayer(
-      createPlayerState(),
-      {
-        ...IDLE_PLAYER_COMMAND,
-        aimDirection: aim,
-        wirePressed: true,
-      },
-      [GROUND, anchor],
-      STEP_SECONDS,
-    )
+  it('와이어 해제 후 속도를 보존하되 초속 30으로 제한한다', () => {
     const released = stepPlayer(
-      pulling,
+      createPlayerState({
+        grounded: false,
+        velocity: { x: 40, y: 0, z: 0 },
+        wire: { anchor: { x: 20, y: 4, z: 0 }, ticksRemaining: 30 },
+      }),
       { ...IDLE_PLAYER_COMMAND, wireReleased: true },
-      [GROUND, anchor],
+      integratingWorld(),
       STEP_SECONDS,
     )
 
     expect(released.wire).toBeNull()
     expect(speedOf(released.velocity)).toBeGreaterThan(0)
-    expect(speedOf(released.velocity)).toBeLessThanOrEqual(30)
+    expect(speedOf(released.velocity)).toBeLessThanOrEqual(MAX_WIRE_RELEASE_SPEED)
   })
 
-  it('카메라 yaw 기준으로 로컬 전진을 월드 이동으로 바꾼다', () => {
-    let player = createPlayerState()
-    for (let tick = 0; tick < 60; tick += 1) {
-      player = stepPlayer(
-        player,
-        {
-          ...IDLE_PLAYER_COMMAND,
-          moveZ: 1,
-          aimDirection: { x: 1, y: 0, z: 0 },
-        },
-        [GROUND],
-        STEP_SECONDS,
-      )
-    }
+  it('카메라 yaw 기준 로컬 이동과 수직 조준 fallback을 월드 방향으로 바꾼다', () => {
+    const yawed = stepPlayer(
+      createPlayerState(),
+      { ...IDLE_PLAYER_COMMAND, moveZ: 1, aimDirection: { x: 1, y: 0, z: 0 } },
+      integratingWorld({ grounded: true }),
+      STEP_SECONDS,
+    )
+    const verticalAim = stepPlayer(
+      createPlayerState(),
+      { ...IDLE_PLAYER_COMMAND, moveZ: 1, aimDirection: { x: 0, y: 1, z: 0 } },
+      integratingWorld({ grounded: true }),
+      STEP_SECONDS,
+    )
 
-    expect(player.position.x).toBeGreaterThan(5)
-    expect(Math.abs(player.position.z)).toBeLessThan(0.01)
+    expect(yawed.velocity.x).toBeGreaterThan(0)
+    expect(Math.abs(yawed.velocity.z)).toBeLessThan(1e-10)
+    expect(verticalAim.velocity.z).toBeLessThan(0)
+  })
+
+  it('대각선 한 tick 지상 가속 벡터 크기는 정확히 초당 40이다', () => {
+    const player = stepPlayer(
+      createPlayerState(),
+      { ...IDLE_PLAYER_COMMAND, moveX: 1, moveZ: 1 },
+      integratingWorld({ grounded: true }),
+      STEP_SECONDS,
+    )
+
+    expect(Math.hypot(player.velocity.x, player.velocity.z)).toBeCloseTo(40 / 60, 10)
+  })
+
+  it('대각선 한 tick 공중 가속 벡터 크기는 정확히 초당 16이다', () => {
+    const player = stepPlayer(
+      createPlayerState({ grounded: false }),
+      { ...IDLE_PLAYER_COMMAND, moveX: 1, moveZ: 1 },
+      integratingWorld(),
+      STEP_SECONDS,
+    )
+
+    expect(Math.hypot(player.velocity.x, player.velocity.z)).toBeCloseTo(16 / 60, 10)
   })
 
   it('대각선 이동도 초속 8미터 상한을 지킨다', () => {
     let player = createPlayerState()
+    const world = integratingWorld({ grounded: true })
     for (let tick = 0; tick < 60; tick += 1) {
       player = stepPlayer(
         player,
         { ...IDLE_PLAYER_COMMAND, moveX: 1, moveZ: 1 },
-        [GROUND],
+        world,
         STEP_SECONDS,
       )
     }
-
     const horizontalSpeed = Math.hypot(player.velocity.x, player.velocity.z)
+
     expect(horizontalSpeed).toBeGreaterThan(7.5)
     expect(horizontalSpeed).toBeLessThanOrEqual(8)
   })
 
   it('중력은 초당 마이너스 24이고 낙하 속도는 마이너스 30으로 제한한다', () => {
-    let player = createPlayerState({
-      position: { x: 0, y: 1000, z: 0 },
-      grounded: false,
-    })
-    player = stepPlayer(player, IDLE_PLAYER_COMMAND, [], STEP_SECONDS)
-    expect(player.velocity.y).toBeCloseTo(-0.4, 8)
+    let player = createPlayerState({ grounded: false })
+    const world = integratingWorld()
+    player = stepPlayer(player, IDLE_PLAYER_COMMAND, world, STEP_SECONDS)
+    expect(player.velocity.y).toBeCloseTo(-24 / 60, 10)
 
     for (let tick = 0; tick < 300; tick += 1) {
-      player = stepPlayer(player, IDLE_PLAYER_COMMAND, [], STEP_SECONDS)
+      player = stepPlayer(player, IDLE_PLAYER_COMMAND, world, STEP_SECONDS)
     }
     expect(player.velocity.y).toBe(-30)
   })
 
-  it('대시는 9틱 뒤 끝나고 착지 전 재입력으로 충전되지 않는다', () => {
+  it('대시는 정확히 9틱이고 같은 충전에서 재입력해도 다시 시작하지 않는다', () => {
     let player = createPlayerState()
-    for (let tick = 0; tick < 9; tick += 1) {
-      player = stepPlayer(
-        player,
-        {
-          ...IDLE_PLAYER_COMMAND,
-          moveZ: 1,
-          aimDirection: { x: 1, y: 0, z: 0 },
-          dashPressed: tick === 0 || tick === 4,
-        },
-        [GROUND],
-        STEP_SECONDS,
-      )
-    }
-    const afterDashX = player.position.x
+    const world = integratingWorld({ grounded: true })
     player = stepPlayer(
       player,
       {
@@ -221,121 +217,167 @@ describe('피벗 플레이어', () => {
         aimDirection: { x: 1, y: 0, z: 0 },
         dashPressed: true,
       },
-      [GROUND],
+      world,
       STEP_SECONDS,
     )
+    expect(player.dashTicksRemaining).toBe(8)
+    expect(Math.hypot(player.velocity.x, player.velocity.z)).toBe(18)
 
-    expect(afterDashX).toBeCloseTo(2.7, 8)
+    for (let tick = 1; tick < 9; tick += 1) {
+      player = stepPlayer(
+        player,
+        {
+          ...IDLE_PLAYER_COMMAND,
+          moveZ: 1,
+          aimDirection: { x: 1, y: 0, z: 0 },
+          dashPressed: tick === 4,
+        },
+        world,
+        STEP_SECONDS,
+      )
+    }
+    expect(player.position.x).toBeCloseTo(18 * 9 / 60, 10)
+    expect(player.dashTicksRemaining).toBe(0)
     expect(player.dashAvailable).toBe(false)
-    expect(player.velocity.x).toBeLessThan(18)
-  })
 
-  it('와이어는 48틱에 만료하고 1미터 도착 반경에서 끝난다', () => {
-    const anchor: StaticCollider = {
-      center: { x: 20, y: 8, z: 0 },
-      halfSize: { x: 0.5, y: 0.5, z: 0.5 },
-      wireable: true,
-    }
-    const aimDirection = { x: 20, y: 7.1, z: 0 }
-    let player = stepPlayer(
-      createPlayerState(),
-      { ...IDLE_PLAYER_COMMAND, aimDirection, wirePressed: true },
-      [anchor],
-      STEP_SECONDS,
-    )
-    expect(player.wire).not.toBeNull()
-    for (let tick = 1; tick < 48; tick += 1) {
-      player = stepPlayer(player, { ...IDLE_PLAYER_COMMAND, aimDirection }, [], STEP_SECONDS)
-    }
-    expect(player.wire).toBeNull()
-
-    const nearAnchor: StaticCollider = {
-      center: { x: 1.4, y: 1.5, z: 0 },
-      halfSize: { x: 0.5, y: 0.5, z: 0.5 },
-      wireable: true,
-    }
-    const arrived = stepPlayer(
-      createPlayerState(),
+    player = stepPlayer(
+      player,
       {
         ...IDLE_PLAYER_COMMAND,
-        aimDirection: { x: 1, y: 0.6, z: 0 },
-        wirePressed: true,
+        moveZ: 1,
+        aimDirection: { x: 1, y: 0, z: 0 },
+        dashPressed: true,
       },
-      [nearAnchor],
+      world,
       STEP_SECONDS,
     )
-    expect(arrived.wire).toBeNull()
+    expect(player.dashTicksRemaining).toBe(0)
+    expect(Math.hypot(player.velocity.x, player.velocity.z)).toBeLessThan(18)
   })
 
-  it('와이어 이동은 CollisionWorld 충돌에서 끝난다', () => {
-    const blockingWorld: CollisionWorld = {
-      raycast: () => ({
-        point: { x: 10, y: 4, z: 0 },
-        distance: 10,
-        wireable: true,
-      }),
-      moveAabb: (position, velocity) => ({
-        position,
-        velocity: { x: 0, y: velocity.y, z: velocity.z },
-        grounded: false,
-        blockedHorizontally: true,
-      }),
+  it('wire press와 release가 같은 tick이면 release가 최종 우선한다', () => {
+    const command = {
+      ...IDLE_PLAYER_COMMAND,
+      aimDirection: { x: 1, y: 0.2, z: 0 },
+      wirePressed: true,
+      wireReleased: true,
     }
+    const newlyTapped = stepPlayer(
+      createPlayerState(),
+      command,
+      queryWorld(VALID_WIRE_HIT),
+      STEP_SECONDS,
+    )
+    const alreadyPulling = stepPlayer(
+      createPlayerState({ wire: { anchor: VALID_WIRE_HIT.point, ticksRemaining: 20 } }),
+      command,
+      queryWorld(VALID_WIRE_HIT),
+      STEP_SECONDS,
+    )
+
+    expect(newlyTapped.wire).toBeNull()
+    expect(alreadyPulling.wire).toBeNull()
+  })
+
+  it('와이어는 47번째 tick까지 유지되고 정확히 48번째 tick에 끝난다', () => {
+    let player = createPlayerState({
+      grounded: false,
+      wire: { anchor: { x: 100, y: 20, z: 0 }, ticksRemaining: 48 },
+    })
+    const world = integratingWorld()
+    for (let tick = 0; tick < 47; tick += 1) {
+      player = stepPlayer(player, IDLE_PLAYER_COMMAND, world, STEP_SECONDS)
+    }
+    expect(player.wire?.ticksRemaining).toBe(1)
+
+    player = stepPlayer(player, IDLE_PLAYER_COMMAND, world, STEP_SECONDS)
+    expect(player.wire).toBeNull()
+  })
+
+  it('와이어는 권위 origin에서 anchor가 1미터 이내면 끝난다', () => {
     const player = stepPlayer(
-      createPlayerState(),
-      {
-        ...IDLE_PLAYER_COMMAND,
-        aimDirection: { x: 1, y: 0.3, z: 0 },
-        wirePressed: true,
-      },
-      blockingWorld,
+      createPlayerState({
+        wire: { anchor: { x: 0.8, y: 1.5, z: 0 }, ticksRemaining: 30 },
+      }),
+      IDLE_PLAYER_COMMAND,
+      integratingWorld(),
       STEP_SECONDS,
     )
 
     expect(player.wire).toBeNull()
-    expect(speedOf(player.velocity)).toBeGreaterThan(0)
+  })
+
+  it('와이어는 수평과 수직을 포함한 모든 이동 차단에서 끝난다', () => {
+    const verticallyBlocked = integratingWorld({ blocked: true, zeroVelocity: true })
+    const player = stepPlayer(
+      createPlayerState({
+        grounded: false,
+        wire: { anchor: { x: 0, y: 20, z: 0 }, ticksRemaining: 30 },
+      }),
+      IDLE_PLAYER_COMMAND,
+      verticallyBlocked,
+      STEP_SECONDS,
+    )
+
+    expect(player.wire).toBeNull()
   })
 
   it('와이어 당김 중 카메라 로컬 횡조향을 적용한다', () => {
-    const openWorld: CollisionWorld = {
-      raycast: () => ({
-        point: { x: 12, y: 4, z: 0 },
-        distance: 12,
-        wireable: true,
-      }),
-      moveAabb: (position, velocity, _halfSize, stepSeconds) => ({
-        position: {
-          x: position.x + velocity.x * stepSeconds,
-          y: position.y + velocity.y * stepSeconds,
-          z: position.z + velocity.z * stepSeconds,
-        },
-        velocity,
-        grounded: false,
-        blockedHorizontally: false,
-      }),
-    }
-    const neutral = stepPlayer(
-      createPlayerState(),
-      {
-        ...IDLE_PLAYER_COMMAND,
-        aimDirection: { x: 1, y: 0.3, z: 0 },
-        wirePressed: true,
-      },
-      openWorld,
-      STEP_SECONDS,
-    )
+    const base = createPlayerState({
+      grounded: false,
+      wire: { anchor: { x: 12, y: 4, z: 0 }, ticksRemaining: 30 },
+    })
+    const world = integratingWorld()
+    const neutral = stepPlayer(base, IDLE_PLAYER_COMMAND, world, STEP_SECONDS)
     const steered = stepPlayer(
-      createPlayerState(),
-      {
-        ...IDLE_PLAYER_COMMAND,
-        moveX: 1,
-        aimDirection: { x: 1, y: 0.3, z: 0 },
-        wirePressed: true,
-      },
-      openWorld,
+      base,
+      { ...IDLE_PLAYER_COMMAND, moveX: 1, aimDirection: { x: 1, y: 0, z: 0 } },
+      world,
       STEP_SECONDS,
     )
 
     expect(steered.velocity.z).toBeGreaterThan(neutral.velocity.z)
   })
 })
+
+interface IntegratingWorldOptions {
+  grounded?: boolean
+  blocked?: boolean
+  zeroVelocity?: boolean
+  maximumPlayerX?: number
+}
+
+function integratingWorld(options: IntegratingWorldOptions = {}): CollisionWorld {
+  return {
+    raycast: () => null,
+    moveAabb(position, velocity, _halfSize, stepSeconds) {
+      const nextPosition = {
+        x: position.x + velocity.x * stepSeconds,
+        y: position.y + velocity.y * stepSeconds,
+        z: position.z + velocity.z * stepSeconds,
+      }
+      let blocked = options.blocked ?? false
+      if (options.maximumPlayerX !== undefined && nextPosition.x > options.maximumPlayerX) {
+        nextPosition.x = options.maximumPlayerX
+        blocked = true
+      }
+      return {
+        position: nextPosition,
+        velocity: options.zeroVelocity ? { x: 0, y: 0, z: 0 } : { ...velocity },
+        grounded: options.grounded ?? false,
+        blocked,
+      }
+    },
+  }
+}
+
+function queryWorld(hit: CollisionRayHit | null, ranges?: number[]): CollisionWorld {
+  const world = integratingWorld()
+  return {
+    ...world,
+    raycast(_origin: Vec3, _direction: Vec3, maximumDistance: number) {
+      ranges?.push(maximumDistance)
+      return hit
+    },
+  }
+}

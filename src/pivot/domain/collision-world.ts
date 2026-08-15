@@ -4,7 +4,7 @@ export interface CollisionMoveResult {
   position: Vec3
   velocity: Vec3
   grounded: boolean
-  blockedHorizontally: boolean
+  blocked: boolean
 }
 
 export interface CollisionRayHit {

@@ -21,5 +21,7 @@ describe('피벗 세션', () => {
     }
 
     expect(first.snapshot).toEqual(second.snapshot)
+    expect(first.snapshot.tick).toBe(600)
+    expect(first.snapshot.player.position.z).not.toBe(0)
   })
 })
